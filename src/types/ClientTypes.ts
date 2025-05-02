@@ -1,8 +1,8 @@
 export interface Client {
   id: string;
-  name: string;
+  nome: string;
   email: string;
-  phone: string;
-  birthday: string;
-  active: boolean;
+  telefone: string;
+  data_nascimento: string;
+  ativo: boolean;
 }

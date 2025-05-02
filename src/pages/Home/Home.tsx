@@ -12,7 +12,7 @@ const Home: React.FC = () => {
 
   const fetchClientes = async () => {
     try {
-      const { data, error } = await supabase.from("clientes").select("*");
+      const { data, error } = await supabase.from("alunos").select("*");
       if (error) throw error;
 
       if (data) {

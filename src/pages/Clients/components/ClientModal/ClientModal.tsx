@@ -26,26 +26,26 @@ interface ClientModalProps {
 
 // Validação: birthday deve estar no formato dd/mm/yyyy
 const schema = yup.object().shape({
-  name: yup
+  nome: yup
     .string()
     .required("Nome é obrigatório")
     .min(3, "Mínimo de 3 caracteres"),
   email: yup.string().email("E-mail inválido"),
-  birthday: yup.string(),
-  phone: yup
+  data_nascimento: yup.string(),
+  telefone: yup
     .string()
     .required("Telefone é obrigatório")
     .matches(/^\d+$/, "Telefone deve conter apenas números") // Apenas números
     .matches(/^\d{10,11}$/, "Telefone deve ter DDD"), // Validação do DDD e comprimento
-  active: yup.boolean().required(),
+  ativo: yup.boolean().required(),
 });
 
 type FormInputs = {
-  name: string;
+  nome: string;
   email: string;
-  birthday: string;
-  phone: string;
-  active: boolean;
+  data_nascimento: string;
+  telefone: string;
+  ativo: boolean;
 };
 
 const ClientModal: React.FC<ClientModalProps> = ({
@@ -71,29 +71,29 @@ const ClientModal: React.FC<ClientModalProps> = ({
   });
 
   const mask = useMemo(() => new MaskPattern(), []);
-  const activeValue = useWatch({ control, name: "active" });
+  const activeValue = useWatch({ control, name: "ativo" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   React.useEffect(() => {
     if (client) {
-      setValue("name", client.name || "");
+      setValue("nome", client.nome || "");
       setValue("email", client.email || "");
 
-      if (client.birthday) {
-        const bdStr = convertDateToDDMMYYYY(client.birthday);
-        setValue("birthday", bdStr);
+      if (client.data_nascimento) {
+        const bdStr = convertDateToDDMMYYYY(client.data_nascimento);
+        setValue("data_nascimento", bdStr);
       } else {
-        setValue("birthday", "");
+        setValue("data_nascimento", "");
       }
 
-      setValue("phone", client.phone || "");
-      setValue("active", client.active ?? false);
+      setValue("telefone", client.telefone || "");
+      setValue("ativo", client.ativo ?? false);
     } else {
-      setValue("name", "");
+      setValue("nome", "");
       setValue("email", "");
-      setValue("birthday", "");
-      setValue("phone", "");
-      setValue("active", true);
+      setValue("data_nascimento", "");
+      setValue("telefone", "");
+      setValue("ativo", true);
     }
   }, [client, setValue]);
 
@@ -115,7 +115,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
     }
 
     // Atualiza o RHF
-    setValue("birthday", val, { shouldValidate: true });
+    setValue("data_nascimento", val, { shouldValidate: true });
   };
 
   const onSubmit: SubmitHandler<FormInputs> = (data) => {
@@ -123,7 +123,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
       setIsSubmitting(true);
       onSave(data);
     } finally {
-      console.log("teste")
       setIsSubmitting(false);
     }
   };
@@ -156,7 +155,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
   };
 
   // Valor atual do campo "birthday" vindo do watch, para exibir no input
-  const birthdayValue = watch("birthday");
+  const birthdayValue = watch("data_nascimento");
 
   return (
     <Styles.ModalOverlay>
@@ -171,6 +170,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
         </Styles.ModalHeader>
 
         <Styles.ModalBody>
+          {/*@ts-expect-error improve later */}
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
               <Styles.Label>
@@ -180,7 +180,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
                 )}
               </Styles.Label>
               {isViewMode ? (
-                <Styles.DisplayField>{client?.name}</Styles.DisplayField>
+                <Styles.DisplayField>{client?.nome}</Styles.DisplayField>
               ) : (
                 <>
                   <Styles.Input
@@ -188,10 +188,10 @@ const ClientModal: React.FC<ClientModalProps> = ({
                     disabled={isViewMode}
                     // Mantemos register para ter a validação do RHF,
                     // mas podemos passar {...register("name")} sem onChange custom.
-                    {...register("name")}
+                    {...register("nome")}
                   />
-                  {errors.name && (
-                    <Styles.ErrorMsg>{errors.name.message}</Styles.ErrorMsg>
+                  {errors.nome && (
+                    <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
                   )}
                 </>
               )}
@@ -219,8 +219,8 @@ const ClientModal: React.FC<ClientModalProps> = ({
               <Styles.Label>Data de Nascimento</Styles.Label>
               {isViewMode ? (
                 <Styles.DisplayField>
-                  {client?.birthday
-                    ? mask.applyMask(client.birthday, "date")
+                  {client?.data_nascimento
+                    ? mask.applyMask(client.data_nascimento, "date")
                     : "-"}
                 </Styles.DisplayField>
               ) : (
@@ -234,8 +234,10 @@ const ClientModal: React.FC<ClientModalProps> = ({
                     value={birthdayValue ?? ""}
                     onChange={handleBirthdayChange}
                   />
-                  {errors.birthday && (
-                    <Styles.ErrorMsg>{errors.birthday.message}</Styles.ErrorMsg>
+                  {errors.data_nascimento && (
+                    <Styles.ErrorMsg>
+                      {errors.data_nascimento.message}
+                    </Styles.ErrorMsg>
                   )}
                 </>
               )}
@@ -250,17 +252,19 @@ const ClientModal: React.FC<ClientModalProps> = ({
               </Styles.Label>
               {isViewMode ? (
                 <Styles.DisplayField>
-                  {client?.phone ? mask.applyMask(client.phone, "phone") : ""}
+                  {client?.telefone
+                    ? mask.applyMask(client.telefone, "phone")
+                    : ""}
                 </Styles.DisplayField>
               ) : (
                 <>
                   <Styles.Input
                     type="text"
                     disabled={isViewMode}
-                    {...register("phone")}
+                    {...register("telefone")}
                   />
-                  {errors.phone && (
-                    <Styles.ErrorMsg>{errors.phone.message}</Styles.ErrorMsg>
+                  {errors.telefone && (
+                    <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
                   )}
                 </>
               )}
@@ -275,12 +279,12 @@ const ClientModal: React.FC<ClientModalProps> = ({
               </Styles.Label>
               {isViewMode ? (
                 <Styles.DisplayField>
-                  {client?.active ? "Ativo" : "Inativo"}
+                  {client?.ativo ? "Ativo" : "Inativo"}
                 </Styles.DisplayField>
               ) : (
                 <Switch
                   checked={activeValue}
-                  onChange={(checked) => setValue("active", checked)}
+                  onChange={(checked) => setValue("ativo", checked)}
                   onColor="#0D88CB"
                   offColor="#ccc"
                   checkedIcon={false}
@@ -305,13 +309,13 @@ const ClientModal: React.FC<ClientModalProps> = ({
           {isViewMode && (
             <Styles.FooterButtonsContainer>
               <Styles.WhatsAppButton
-                onClick={() => handleWhatsApp(client?.phone || "")}
+                onClick={() => handleWhatsApp(client?.telefone || "")}
                 title="Abrir WhatsApp"
               >
                 <FaWhatsapp />
               </Styles.WhatsAppButton>
               <Styles.CallButton
-                onClick={() => handleCall(client?.phone || "")}
+                onClick={() => handleCall(client?.telefone || "")}
                 title="Ligar agora"
               >
                 <FaPhone />

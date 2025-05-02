@@ -15,11 +15,10 @@ enum ModalMode {
 }
 
 const columns: TableColumn<Client>[] = [
-  { field: "name", header: "Nome" },
-  { field: "email", header: "Email" },
-  { field: "phone", header: "Telefone", formatter: "phone" },
-  { field: "birthday", header: "Nascimento", formatter: "date" },
-  { field: "active", header: "Status", formatter: "status" },
+  { field: "nome", header: "Nome" },
+  { field: "telefone", header: "Telefone", formatter: "phone" },
+  { field: "data_nascimento", header: "Nascimento", formatter: "date" },
+  { field: "ativo", header: "Status", formatter: "status" },
 ];
 
 const Clients: React.FC = () => {
@@ -31,6 +30,7 @@ const Clients: React.FC = () => {
   const [modalMode, setModalMode] = useState<ModalMode>(ModalMode.CREATE);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [onLoading, setLoading] = useState(false);
+  const [inputSearch, setInputSearch] = useState<string>("");
 
   useEffect(() => {
     fetchClientes();
@@ -40,21 +40,28 @@ const Clients: React.FC = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from("clientes")
+        .from("alunos")
         .select("*")
-        .order("name", { ascending: true });
+        .order("nome", { ascending: true });
       if (error) {
-        toast.error("Erro ao buscar clientes.");
+        toast.error("Erro ao buscar alunos.");
         throw error;
       }
       if (data) {
         setContatos(data as Client[]);
       }
     } catch (err) {
-      console.error("Erro ao buscar clientes:", err);
+      console.error("Erro ao buscar alunos:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const adjustString = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   };
 
   const totalRows = contatos.length;
@@ -99,7 +106,7 @@ const Clients: React.FC = () => {
     try {
       if (modalMode === ModalMode.CREATE) {
         const { data: created, error } = await supabase
-          .from("clientes")
+          .from("alunos")
           .insert([data])
           .select();
         if (error) {
@@ -112,7 +119,7 @@ const Clients: React.FC = () => {
         }
       } else if (modalMode === ModalMode.EDIT && selectedClient) {
         const { data: updated, error } = await supabase
-          .from("clientes")
+          .from("alunos")
           .update(data)
           .eq("id", selectedClient.id)
           .select();
@@ -136,7 +143,7 @@ const Clients: React.FC = () => {
 
   const handleDelete = async (client: Client) => {
     const confirmDelete = window.confirm(
-      `Tem certeza que deseja excluir o aluno: ${client.name}?`
+      `Tem certeza que deseja excluir o aluno: ${client.nome}?`
     );
     if (!confirmDelete) return;
 
@@ -175,19 +182,30 @@ const Clients: React.FC = () => {
           <Loader color="#000" />
         </Styles.LoaderDiv>
       ) : (
-        <DefaultTable
-          data={currentData}
-          columns={columns}
-          rowsPerPage={rowsPerPage}
-          currentPage={currentPage}
-          totalRows={totalRows}
-          onPageChange={handlePageChange}
-          onRowsPerPageChange={handleRowsPerPageChange}
-          showActions
-          onView={openViewModal}
-          onEdit={openEditModal}
-          onDelete={handleDelete}
-        />
+        <>
+          <div style={{ maxWidth: 400 }}>
+            <Styles.Input
+              value={inputSearch}
+              onChange={(e) => setInputSearch(e.target.value)}
+              placeholder="Pesquisar Aluno"
+            />
+          </div>
+          <DefaultTable
+            data={currentData.filter((item) =>
+              adjustString(item.nome)?.includes(adjustString(inputSearch))
+            )}
+            columns={columns}
+            rowsPerPage={rowsPerPage}
+            currentPage={currentPage}
+            totalRows={totalRows}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            showActions
+            onView={openViewModal}
+            onEdit={openEditModal}
+            onDelete={handleDelete}
+          />
+        </>
       )}
 
       <ClientModal

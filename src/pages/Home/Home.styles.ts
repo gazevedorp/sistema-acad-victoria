@@ -31,48 +31,51 @@ export const Subtitle = styled.p`
   margin: 0;
 `;
 
+export const CardContainer = styled.div`
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; // Allow cards to wrap to the next line
+  gap: 1.5rem; // Spacing between cards (24px)
+  margin-bottom: 2rem; // INCREASED Space below the cards (32px)
+`;
+
 export const Card = styled.div`
-  background-color: #f5f5f5;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  max-width: 300px;
-  width: 100%;
-  margin-top: 16px;
+  background-color: #ffffff; // Clean white background
+  border-radius: 8px; // Keep border radius
+  border: 1px solid #e5e7eb; // Subtle border (Tailwind gray-200)
+  padding: 1.5rem; // Keep padding (24px)
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07),
+    0 2px 4px -2px rgba(0, 0, 0, 0.07);
+  flex: 1 1 250px; // Grow, shrink, with a base width suggestion
+  min-width: 200px; // Prevent cards from becoming too narrow
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  margin-right: 24px;
+  justify-content: flex-start; // Align content to the top
+  align-items: flex-start; // Left-align content within the card
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; // Smooth transition
 
-  @media (max-width: 768px) {
-    margin-right: 0px;
-    margin-top: 24px;
+  &:hover {
+    transform: translateY(-4px); // Subtle lift effect
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08),
+      0 4px 6px -4px rgba(0, 0, 0, 0.08);
   }
 `;
 
 export const CardNumber = styled.span`
-  font-size: 36px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 8px;
+  font-size: 1.8rem; // 32px - Slightly reduced size for balance
+  font-weight: 700; // Keep bold
+  color: #1f2937; // Tailwind gray-800
+  margin-bottom: 0.375rem; // 6px spacing below number
+  line-height: 1.2; // Adjust line height for large font
+  word-break: break-all; // Break long currency values if needed
 `;
 
 export const CardLabel = styled.span`
-  font-size: 16px;
-  font-weight: 500;
-  color: #666;
-`;
-
-export const CardContainer = styled.div`
-  display: flex;
-  flex-direction: row;
-  margin-bottom: 12px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
+  font-size: 0.875rem; // 14px - Slightly smaller label
+  font-weight: 500; // Keep medium weight
+  color: #6b7280; // Tailwind gray-500
+  line-height: 1.4; // Improve readability for multi-line labels
+  text-align: left; // Ensure text is left-aligned
 `;
 
 export const LoaderDiv = styled.div`
