@@ -23,7 +23,12 @@ interface Client {
   bairro?: string;
   cidade?: string;
   estado?: string;
-  ativo?: boolean; 
+  ativo?: boolean;
+  possuiResponsavel?: boolean;
+  responsavelNome?: string;
+  responsavelCpf?: string;
+  responsavelTelefone?: string;
+  responsavelParentesco?: string;
   // Adicione quaisquer outros campos que sua tabela 'alunos' retorna e você usa.
   // Campos de responsável e matrícula não ficam aqui, pois pertencem a outras lógicas/tabelas.
 }
@@ -118,7 +123,8 @@ const Clients: React.FC = () => {
 
   const handleSaveComplete = useCallback((
     error: any | null,
-    savedData?: Partial<DadosCadastraisFormData>, 
+    //@ts-expect-error
+    savedData?: Partial<DadosCadastraisFormData>,
     operationMode?: ModalMode
   ) => {
     if (error) {
@@ -146,6 +152,11 @@ const Clients: React.FC = () => {
         bairro: selectedClient.bairro,
         cidade: selectedClient.cidade,
         estado: selectedClient.estado,
+        possuiResponsavel: selectedClient.possuiResponsavel,
+        responsavelNome: selectedClient.responsavelNome,
+        responsavelCpf: selectedClient.responsavelCpf,
+        responsavelTelefone: selectedClient.responsavelTelefone,
+        responsavelParentesco: selectedClient.responsavelParentesco,
       };
     }
     return undefined;
@@ -195,14 +206,14 @@ const Clients: React.FC = () => {
       )}
 
       {modalOpen && (
-          <ClientModal
-            open={modalOpen}
-            mode={modalMode}
-            initialData={getInitialModalData()}
-            alunoIdToEdit={modalMode === ModalMode.EDIT && selectedClient ? selectedClient.id : undefined}
-            onClose={handleCloseModal}
-            onSaveComplete={handleSaveComplete}
-          />
+        <ClientModal
+          open={modalOpen}
+          mode={modalMode}
+          initialData={getInitialModalData()}
+          alunoIdToEdit={modalMode === ModalMode.EDIT && selectedClient ? selectedClient.id : undefined}
+          onClose={handleCloseModal}
+          onSaveComplete={handleSaveComplete}
+        />
       )}
 
       <ToastContainer autoClose={3000} hideProgressBar />

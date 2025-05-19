@@ -5,7 +5,7 @@ import Sidebar from "../components/Sidebar/Sidebar";
 import * as Styles from "./Dashboard.styles";
 
 const Dashboard: React.FC = () => {
-  const [minimized, setMinimized] = useState<boolean>(true);
+  const [minimized, setMinimized] = useState<boolean>(false);
 
   const toggleSidebar = () => {
     setMinimized((prev) => !prev);

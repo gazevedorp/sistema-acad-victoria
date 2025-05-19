@@ -29,6 +29,12 @@ export interface DadosCadastraisFormData {
   bairro: string;
   cidade: string;
   estado: string;
+
+  possuiResponsavel?: boolean;
+  responsavelNome?: string;
+  responsavelCpf?: string;
+  responsavelTelefone?: string;
+  responsavelParentesco?: string;
 }
 
 export function isValidCPF(cpf: string | null | undefined): boolean {
@@ -115,6 +121,31 @@ export const dadosCadastraisSchema = yup.object().shape({
     .required("Estado (UF) é obrigatório")
     .length(2, "UF inválida (2 letras)")
     .matches(/^[A-Za-z]{2}$/, "UF inválida"),
+  possuiResponsavel: yup.boolean().optional().nullable(),
+  responsavelNome: yup.string().when('possuiResponsavel', {
+    is: true,
+    then: schema => schema.required("Nome do Responsável é obrigatório").min(3, "Nome do resp. muito curto"),
+    otherwise: schema => schema.optional().nullable().default(undefined),
+  }),
+  responsavelCpf: yup.string().when('possuiResponsavel', {
+    is: true,
+    then: schema => schema.optional().nullable().default(undefined)
+      .transform(value => value ? String(value).replace(/[^\d]/g, '') : null)
+      .test('cpf-valido-resp', 'CPF do Responsável inválido', value => !value || isValidCPF(value)),
+    otherwise: schema => schema.optional().nullable().default(undefined),
+  }),
+  responsavelTelefone: yup.string().when('possuiResponsavel', {
+    is: true,
+    then: schema => schema.optional().nullable().default(undefined)
+      .transform(value => value ? String(value).replace(/[^\d]/g, '') : null)
+      .test('telefone-valido-resp', 'Telefone do Resp. inválido', value => !value || /^\d{10,11}$/.test(value)),
+    otherwise: schema => schema.optional().nullable().default(undefined),
+  }),
+  responsavelParentesco: yup.string().when('possuiResponsavel', {
+    is: true,
+    then: schema => schema.required("Parentesco é obrigatório"),
+    otherwise: schema => schema.optional().nullable().default(undefined),
+  }),
 });
 
 export const UFs = [
