@@ -29,8 +29,6 @@ interface Client {
   responsavelCpf?: string;
   responsavelTelefone?: string;
   responsavelParentesco?: string;
-  // Adicione quaisquer outros campos que sua tabela 'alunos' retorna e você usa.
-  // Campos de responsável e matrícula não ficam aqui, pois pertencem a outras lógicas/tabelas.
 }
 
 const columns: TableColumn<Client>[] = [
