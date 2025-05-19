@@ -1,5 +1,21 @@
 import styled from "styled-components";
 
+export const COLORS = {
+  primary: "#0898e6",
+  primaryDarker: "#0b5ed7",
+  primaryLightFocus: "rgba(13, 110, 253, 0.25)",
+  textBody: "#212529",
+  textMuted: "#6c757d",
+  textLabel: "#495057",
+  borderDefault: "#dee2e6",
+  borderFocus: "#86b7fe",
+  backgroundDisabled: "#e9ecef",
+  backgroundLight: "#f8f9fa",
+  danger: "#dc3545",
+  success: "#28a745",
+  white: "#fff",
+};
+
 export const Container = styled.div`
   width: 100%;
   padding: 24px;

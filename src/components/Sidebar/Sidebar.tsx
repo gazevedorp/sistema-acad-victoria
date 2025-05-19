@@ -10,6 +10,7 @@ import {
   FiLogOut,
   FiTable,
   FiFile,
+  FiBox,
 } from "react-icons/fi";
 import { useAuthStore } from "../../store/authStore";
 
@@ -45,10 +46,10 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
   const menuItems = useMemo(() => [
     { icon: <FiHome />, text: "Home [F1]", route: "/" },
     { icon: <FiUser />, text: "Alunos [F2]", route: "/clients" },
-    { icon: <FiTable />, text: "Turmas [F3]", route: "/turmas" },
-    { icon: <FiFile />, text: "Planos [F4]", route: "/planos" },
-    { icon: <FiPackage />, text: "Produtos [F5]", route: "/products" },
-    // { icon: <FiUsers />, text: "Usuarios [F6]", route: "/users" },
+    { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
+    { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
+    { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
+    { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
     // { icon: <FiBarChart2 />, text: "Relatorios [F7]", route: "/relatorios" },
   ], []);
 

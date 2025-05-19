@@ -126,6 +126,12 @@ export const DisplayField = styled.div`
   line-height: 1.4;
 `;
 
+export const SubmitButtonContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px; 
+`;
+
 export const SubmitButton = styled.button`
   background-color: ${COLORS.primary};
   color: ${COLORS.white};

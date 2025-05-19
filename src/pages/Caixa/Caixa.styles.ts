@@ -74,3 +74,18 @@ export const Input = styled.input`
     margin: 0;
   }
 `;
+
+export const CadastrarButton = styled.button`
+  color: #fff;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding-bottom: 10px;
+  align-self: flex-start;
+  background: #0d88cb;
+  &:hover {
+    background: #0898e6;
+  }
+`;

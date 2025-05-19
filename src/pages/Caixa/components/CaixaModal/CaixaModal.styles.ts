@@ -12,7 +12,6 @@ export const COLORS = {
   backgroundDisabled: '#e9ecef',
   backgroundLight: '#f8f9fa',
   danger: '#dc3545',
-  success: '#198754',
   white: '#fff',
 };
 
@@ -26,14 +25,14 @@ export const ModalOverlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1050;
   padding: 16px;
   overflow-y: hidden;
 `;
 
 export const ModalContainer = styled.div`
   background-color: ${COLORS.white};
-  width: 700px;
+  width: 550px;
   max-width: 95%;
   border-radius: 6px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
@@ -75,7 +74,7 @@ export const CloseButton = styled.button`
 `;
 
 export const ModalBody = styled.div`
-  padding: 20px 24px; 
+  padding: 20px 24px;
   overflow-y: auto;
   flex-grow: 1;
   &::-webkit-scrollbar { width: 6px; }
@@ -92,15 +91,16 @@ export const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 8px;
-  flex-grow: 1; 
+  margin-bottom: 14px;
+  flex-grow: 1;
 `;
 
 export const FormRow = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px 16px;
-  align-items: start; 
+  margin-bottom: 14px;
+  align-items: start;
 `;
 
 export const Label = styled.label`
@@ -108,7 +108,7 @@ export const Label = styled.label`
   color: ${COLORS.textLabel};
   font-weight: 500;
   display: block;
-  margin-bottom: 2px; 
+  margin-bottom: 2px;
 `;
 
 const baseInputStyles = `
@@ -121,13 +121,13 @@ const baseInputStyles = `
   border: 1px solid #ced4da;
   border-radius: 3px;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-  width: 100%; 
+  width: 100%;
   box-sizing: border-box;
 
   &:focus {
     color: ${COLORS.textBody};
     background-color: ${COLORS.white};
-    border-color: ${COLORS.borderFocus}; 
+    border-color: ${COLORS.borderFocus};
     outline: 0;
     box-shadow: 0 0 0 0.2rem ${COLORS.primaryLightFocus};
   }
@@ -147,13 +147,19 @@ export const Select = styled.select`
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
   background-size: 14px 10px;
-  padding-right: 2.2rem; 
+  padding-right: 2.2rem;
+`;
+
+export const Textarea = styled.textarea`
+  ${baseInputStyles}
+  min-height: 70px;
+  resize: vertical;
 `;
 
 export const SubmitButtonContainer = styled.div`
   display: flex;
-  justify-content: space-between;
-  margin-top: 20px; 
+  justify-content: flex-end;
+  margin-top: 20px;
 `;
 
 export const SubmitButton = styled.button`

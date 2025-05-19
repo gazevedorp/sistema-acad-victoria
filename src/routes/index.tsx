@@ -9,7 +9,7 @@ import Products from "../pages/Products/Products";
 import Turmas from "../pages/Turmas/Turmas";
 import Relatorios from "../pages/Relatorios/Relatorios";
 import Plans from "../pages/Planos/Planos";
-import Users from "../pages/Users/Users";
+import Caixa from "../pages/Caixa/Caixa";
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -33,7 +33,7 @@ const AppRoutes: React.FC = () => {
           <Route path="turmas" element={<Turmas />} />
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="planos" element={<Plans />} />
-          <Route path="users" element={<Users />} />
+          <Route path="caixa" element={<Caixa />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
