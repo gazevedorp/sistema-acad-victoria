@@ -27,6 +27,7 @@ export interface DefaultTableProps<T> {
   onView?(row: T): void;
   onEdit?(row: T): void;
   onDelete?(row: T): void;
+  noDelete?: boolean;
 }
 
 function DefaultTable<T extends Record<string, any>>(
@@ -44,6 +45,7 @@ function DefaultTable<T extends Record<string, any>>(
     onView,
     onEdit,
     onDelete,
+    noDelete = false,
   } = props;
 
   const [openRowId, setOpenRowId] = useState<string>("");
@@ -131,6 +133,7 @@ function DefaultTable<T extends Record<string, any>>(
                   onView={onView}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  noDelete={noDelete}
                 />
               </div>
             );

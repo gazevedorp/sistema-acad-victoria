@@ -5,8 +5,8 @@ import {
   FiHome,
   FiUser,
   FiPackage,
-  FiUsers,
-  FiBarChart2,
+  // FiUsers,
+  // FiBarChart2,
   FiLogOut,
   FiTable,
   FiFile,
@@ -48,8 +48,8 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
     { icon: <FiTable />, text: "Turmas [F3]", route: "/turmas" },
     { icon: <FiFile />, text: "Planos [F4]", route: "/planos" },
     { icon: <FiPackage />, text: "Produtos [F5]", route: "/products" },
-    { icon: <FiUsers />, text: "Usuarios [F6]", route: "/users" },
-    { icon: <FiBarChart2 />, text: "Relatorios [F7]", route: "/relatorios" },
+    // { icon: <FiUsers />, text: "Usuarios [F6]", route: "/users" },
+    // { icon: <FiBarChart2 />, text: "Relatorios [F7]", route: "/relatorios" },
   ], []);
 
   const keyRouteMap = useMemo(() => {

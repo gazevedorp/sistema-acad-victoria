@@ -9,7 +9,7 @@ import { Plano } from "../../types/PlanoTypes.ts";
 
 const columns: TableColumn<Turma>[] = [
   { field: "nome", header: "Nome" },
-  { field: "valor", header: "Valor", formatter: "money" },
+  { field: "valor_mensal", header: "Valor", formatter: "money" },
   { field: "ativo", header: "Status", formatter: "status" },
 ];
 

@@ -9,11 +9,22 @@ interface ActionsMenuCellProps<T> {
   onView?(row: T): void;
   onEdit?(row: T): void;
   onDelete?(row: T): void;
+  noDelete?: boolean;
 }
 
-function ActionsMenu<T extends Record<string, any>>(props: ActionsMenuCellProps<T>) {
-  const { rowValue, onView, onEdit, onDelete, isOpen, onToggle, onClose } = props;
-
+function ActionsMenu<T extends Record<string, any>>(
+  props: ActionsMenuCellProps<T>
+) {
+  const {
+    rowValue,
+    onView,
+    onEdit,
+    onDelete,
+    isOpen,
+    onToggle,
+    onClose,
+    noDelete = false,
+  } = props;
 
   const handleView = () => {
     onView?.(rowValue);
@@ -46,10 +57,12 @@ function ActionsMenu<T extends Record<string, any>>(props: ActionsMenuCellProps<
             <FaEdit />
             <span>Editar</span>
           </S.MenuItem>
-          <S.MenuItemDelete onClick={handleDelete}>
-            <FaTrash />
-            <span>Excluir</span>
-          </S.MenuItemDelete>
+          {noDelete ? null : (
+            <S.MenuItemDelete onClick={handleDelete}>
+              <FaTrash />
+              <span>Excluir</span>
+            </S.MenuItemDelete>
+          )}
         </S.Popup>
       )}
     </S.Container>

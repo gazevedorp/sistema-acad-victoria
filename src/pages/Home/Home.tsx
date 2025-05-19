@@ -17,7 +17,7 @@ const Home: React.FC = () => {
 
       if (data) {
         setClients(data as Client[]);
-        setActiveClients(data.filter((item) => item.active) as Client[]);
+        setActiveClients(data.filter((item) => item.ativo) as Client[]);
       }
     } catch (err) {
       console.error("Erro ao buscar clientes:", err);
@@ -56,12 +56,12 @@ const Home: React.FC = () => {
         </Styles.LoaderDiv>
       ) : (
         <Styles.CardContainer>
-          <Styles.Card>
+          {/* <Styles.Card>
             <Styles.CardNumber>{clients.length}</Styles.CardNumber>
             <Styles.CardLabel>
               Aluno(s) <br /> cadastrado(s)
             </Styles.CardLabel>
-          </Styles.Card>
+          </Styles.Card> */}
 
           <Styles.Card>
             <Styles.CardNumber>{clientsActive.length}</Styles.CardNumber>

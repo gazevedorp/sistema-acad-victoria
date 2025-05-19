@@ -1,194 +1,180 @@
 import styled from "styled-components";
 
+export const COLORS = {
+  primary: '#0898e6',
+  primaryDarker: '#0b5ed7',
+  primaryLightFocus: 'rgba(13, 110, 253, 0.25)',
+  textBody: '#212529',
+  textMuted: '#6c757d',
+  textLabel: '#495057',
+  borderDefault: '#dee2e6',
+  borderFocus: '#86b7fe',
+  backgroundDisabled: '#e9ecef',
+  backgroundLight: '#f8f9fa',
+  danger: '#dc3545',
+  success: '#198754',
+  white: '#fff',
+};
+
 export const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100dvh;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
-  overflow: hidden;
+  z-index: 1000;
+  padding: 16px;
+  overflow-y: hidden;
 `;
 
 export const ModalContainer = styled.div`
-  background-color: #fff;
-  width: 500px;
-  max-width: 90%;
-  max-height: 90vh;
-  overflow: auto;
-  border-radius: 8px;
-  overflow: scroll;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  background-color: ${COLORS.white};
+  width: 700px;
+  max-width: 95%;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: 90dvh;
 `;
 
-export const ModalHeader = styled.div`
+export const ModalHeader = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  border-bottom: 1px solid #eee;
+  padding: 14px 20px;
+  border-bottom: 1px solid ${COLORS.borderDefault};
+  flex-shrink: 0;
 `;
 
 export const ModalTitle = styled.h2`
   margin: 0;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 1.2rem;
+  color: ${COLORS.textBody};
 `;
 
 export const CloseButton = styled.button`
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 1.6rem;
+  font-weight: bold;
+  line-height: 1;
+  color: ${COLORS.textMuted};
   cursor: pointer;
-  color: #888;
+  padding: 4px;
+  opacity: 0.8;
   &:hover {
-    color: #333;
+    opacity: 1;
+    color: ${COLORS.textBody};
   }
 `;
 
 export const ModalBody = styled.div`
-  padding: 16px 24px;
+  padding: 20px 24px; 
+  overflow-y: auto;
+  flex-grow: 1;
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 3px; }
+  &::-webkit-scrollbar-track { background-color: ${COLORS.backgroundLight}; }
 `;
 
 export const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 4px;
 `;
 
 export const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-grow: 1; 
+`;
+
+export const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 16px;
+  align-items: start; 
 `;
 
 export const Label = styled.label`
-  font-size: 14px;
-  margin-bottom: 4px;
-  font-weight: bold;
+  font-size: 0.8rem;
+  color: ${COLORS.textLabel};
+  font-weight: 500;
+  display: block;
+  margin-bottom: 2px; 
 `;
 
-export const LabelRequired = styled.span`
-  font-weight: 200;
-  color: #888;
+const baseInputStyles = `
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: ${COLORS.textBody};
+  background-color: ${COLORS.white};
+  background-clip: padding-box;
+  border: 1px solid #ced4da;
+  border-radius: 3px;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  width: 100%; 
+  box-sizing: border-box;
+
+  &:focus {
+    color: ${COLORS.textBody};
+    background-color: ${COLORS.white};
+    border-color: ${COLORS.borderFocus}; 
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem ${COLORS.primaryLightFocus};
+  }
+
+  &::placeholder { color: ${COLORS.textMuted}; opacity: 1; }
+  &:disabled, &[readonly] { background-color: ${COLORS.backgroundDisabled}; opacity: 0.7; cursor: not-allowed; }
 `;
 
 export const Input = styled.input`
-  padding: 8px 12px;
-  font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  &:disabled,
-  &[readonly] {
-    background-color: #f9f9f9;
-    color: #666;
-    cursor: not-allowed;
-  }
+  ${baseInputStyles}
 `;
 
-export const DisplayField = styled.div`
-  padding: 8px 0;
-  font-size: 14px;
-  color: #333;
+export const Select = styled.select`
+  ${baseInputStyles}
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='${encodeURIComponent(COLORS.textMuted)}' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 14px 10px;
+  padding-right: 2.2rem; 
+`;
+
+export const SubmitButtonContainer = styled.div`
   display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-export const WhatsAppIcon = styled.span`
-  color: #25d366;
-  font-size: 1.2rem;
-  cursor: pointer;
-  &:hover {
-    filter: brightness(1.1);
-  }
+  justify-content: flex-end;
+  margin-top: 20px; 
 `;
 
 export const SubmitButton = styled.button`
-  align-self: flex-end;
-  color: #fff;
-  width: 140px;
-  font-size: 14px;
-  margin-top: 10px;
-  margin-bottom: 8px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
+  background-color: ${COLORS.primary};
+  color: ${COLORS.white};
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 9px 20px;
+  border: 1px solid transparent;
+  border-radius: 3px;
   cursor: pointer;
-  
-  background: #0D88CB;
-  &:hover {
-    background: #0898e6;
-  }
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  min-width: 150px;
+  text-align: center;
+
+  &:hover { background-color: ${COLORS.primaryDarker}; }
+  &:focus { outline: 0; box-shadow: 0 0 0 0.2rem ${COLORS.primaryLightFocus}; }
+  &:disabled { background-color: ${COLORS.textMuted}; border-color: ${COLORS.textMuted}; cursor: not-allowed; opacity: 0.65; }
 `;
 
 export const ErrorMsg = styled.span`
-  color: red;
-  font-size: 12px;
-  margin-top: 4px;
-`;
-
-/**
- * Container extra no rodapé para exibir botões lado a lado
- * (apenas modo VIEW, com WhatsApp e Ligação).
- */
-export const FooterButtonsContainer = styled.div`
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 14px;
-  margin-bottom: 6px;
-`;
-
-/**
- * Botão com fundo branco, borda verde, ícone verde para WhatsApp
- */
-export const WhatsAppButton = styled.button`
-  background: #fff;
-  border: 2px solid #25d366;
-  color: #25d366;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #f0fff5;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px #bbf7d0;
-  }
-`;
-
-/**
- * Botão com fundo branco, borda azul, ícone azul para ligações
- */
-export const CallButton = styled.button`
-  background: #fff;
-  border: 2px solid #007bff;
-  color: #007bff;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #f0f8ff;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px #cce5ff;
-  }
+  color: ${COLORS.danger};
+  font-size: 0.75rem;
 `;

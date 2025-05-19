@@ -75,12 +75,34 @@ export class MaskPattern {
     return this.maskPhone(value);
   };
 
-  private maskDate = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{2})(\d)/, "$1/$2")
-      .replace(/(\d{2})(\d)/, "$1/$2")
-      .replace(/(\d{4})(\d)/, "$1");
+  private maskDate = (dbDate: string | Date | null | undefined): string => {
+    if (!dbDate) {
+      return "-";
+    }
+
+    let dateObj: Date;
+
+    if (typeof dbDate === "string") {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dbDate)) {
+        dateObj = new Date(dbDate + "T00:00:00Z");
+      } else {
+        dateObj = new Date(dbDate);
+      }
+    } else if (dbDate instanceof Date) {
+      dateObj = dbDate;
+    } else {
+      return "";
+    }
+
+    if (isNaN(dateObj.getTime())) {
+      return "";
+    }
+
+    const dia = String(dateObj.getUTCDate()).padStart(2, "0");
+    const mes = String(dateObj.getUTCMonth() + 1).padStart(2, "0"); // Meses são 0-indexados
+    const ano = dateObj.getUTCFullYear();
+
+    return `${dia}/${mes}/${ano}`;
   };
 
   private maskOnlyLetters = (value: string) => {

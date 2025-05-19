@@ -1,203 +1,199 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import { FaWhatsapp, FaPhone } from "react-icons/fa";
 import * as Styles from "./ClientModal.styles";
-// Removido import de ClientTypes - tipo será definido aqui
-import { MaskPattern } from "../../../../utils/formatter"; // Assumindo que você tem ou criará máscara de CPF aqui
 import Loader from "../../../../components/Loader/Loader";
+import { MaskPattern } from "../../../../utils/formatter";
+import {
+  ModalMode,
+  BaseModalProps,
+  DadosCadastraisFormData,
+  dadosCadastraisSchema,
+  MaskPatternType,
+  UFs,
+} from "./ClientModal.definitions";
+import { supabase } from "../../../../lib/supabase";
 
-// --- Definição do Tipo Client (direto no arquivo) ---
-interface Client {
-  id?: string; // Presente na edição/visualização
-  cpf: string; // Campo renomeado e obrigatório
-  rg?: string; // Opcional
-  endereco: string; // Obrigatório
-  nome: string; // Obrigatório
-  telefone: string; // Obrigatório
-  email?: string; // Opcional
-  // Campos de timestamp podem existir no objeto completo, mas não no form
-  created_at?: string | Date;
-  updated_at?: string | Date;
+interface ClientModalProps extends BaseModalProps {
+  initialData?: Partial<DadosCadastraisFormData>;
+  alunoIdToEdit?: string;
+  onSaveComplete?: (
+    error: any | null,
+    savedData?: DadosCadastraisFormData,
+    mode?: ModalMode
+  ) => void;
 }
-// -----------------------------------------------------
-
-// eslint-disable-next-line react-refresh/only-export-components
-export enum ModalMode {
-  CREATE = "create",
-  VIEW = "view",
-  EDIT = "edit",
-}
-
-interface ClientModalProps {
-  open: boolean;
-  mode: ModalMode;
-  client: Omit<Client, "id" | "created_at" | "updated_at"> | Client | null; // Ajustado para refletir Client local
-  onClose: () => void;
-  onSave: (data: Omit<Client, "id" | "created_at" | "updated_at">) => void; // Ajustado
-}
-
-// --- Função de Validação de CPF (Exemplo Básico) ---
-// Fonte: Implementações comuns encontradas online (verificar adequação para seu caso)
-function isValidCPF(cpf: string | null | undefined): boolean {
-  if (!cpf) return false;
-  cpf = cpf.replace(/[^\d]+/g, ''); // Remove caracteres não numéricos
-  if (cpf.length !== 11) return false;
-  // Elimina CPFs invalidos conhecidos
-  if (/^(\d)\1+$/.test(cpf)) return false;
-
-  let add = 0;
-  for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
-  let rev = 11 - (add % 11);
-  if (rev === 10 || rev === 11) rev = 0;
-  if (rev !== parseInt(cpf.charAt(9))) return false;
-
-  add = 0;
-  for (let i = 0; i < 10; i++) add += parseInt(cpf.charAt(i)) * (11 - i);
-  rev = 11 - (add % 11);
-  if (rev === 10 || rev === 11) rev = 0;
-  if (rev !== parseInt(cpf.charAt(10))) return false;
-
-  return true;
-}
-// -----------------------------------------------------
-
-
-// --- Schema de Validação Atualizado ---
-const schema = yup.object().shape({
-  cpf: yup
-    .string()
-    .required("CPF é obrigatório")
-    .transform(value => value.replace(/[^\d]/g, '')) // Remove máscara antes de validar
-    .test('cpf-valido', 'CPF inválido', value => isValidCPF(value)), // Usa a função de validação
-  rg: yup.string(), // Opcional
-  endereco: yup
-    .string()
-    .required("Endereço é obrigatório")
-    .min(5, "Endereço muito curto"),
-  nome: yup
-    .string()
-    .required("Nome é obrigatório")
-    .min(3, "Mínimo de 3 caracteres"),
-  telefone: yup
-    .string()
-    .required("Telefone é obrigatório")
-    .transform(value => value.replace(/[^\d]/g, '')) // Remove máscara antes de validar
-    .matches(/^\d{10,11}$/, "Telefone inválido (DDD + 8 ou 9 dígitos)"),
-  email: yup.string().email("E-mail inválido"), // Opcional mas valida formato
-});
-// -----------------------------------------
-
-
-// --- Tipo para Inputs do Formulário ---
-type FormInputs = {
-  cpf: string;
-  rg?: string;
-  endereco: string;
-  nome: string;
-  telefone: string;
-  email?: string;
-};
-// -------------------------------------
 
 const ClientModal: React.FC<ClientModalProps> = ({
   open,
   mode,
-  client,
   onClose,
-  onSave,
+  initialData,
+  alunoIdToEdit,
+  onSaveComplete,
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const isEditMode = mode === ModalMode.EDIT;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const defaultFormValues: DadosCadastraisFormData = useMemo(
+    () => ({
+      nome: "",
+      cpf: "",
+      rg: undefined,
+      data_nascimento: "",
+      telefone: "",
+      email: undefined,
+      cep: "",
+      rua: "",
+      numero: "",
+      complemento: undefined,
+      bairro: "",
+      cidade: "",
+      estado: "",
+      ...(initialData || {}),
+    }),
+    [initialData]
+  );
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
+    watch,
+    setValue,
     reset,
-    watch // Adicionar watch para máscara de CPF e Telefone
-  } = useForm<FormInputs>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      cpf: '',
-      rg: '',
-      endereco: '',
-      nome: '',
-      telefone: '',
-      email: '',
-    }
+  } = useForm<DadosCadastraisFormData>({
+    //@ts-expect-error
+    resolver: yupResolver(dadosCadastraisSchema),
+    defaultValues: defaultFormValues,
   });
 
-  const mask = useMemo(() => new MaskPattern(), []);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  useEffect(() => {
+    if (initialData || mode === ModalMode.CREATE) {
+      const dataToReset =
+        mode === ModalMode.CREATE
+          ? {
+              nome: "",
+              cpf: "",
+              rg: undefined,
+              data_nascimento: "",
+              telefone: "",
+              email: undefined,
+              cep: "",
+              rua: "",
+              numero: "",
+              complemento: undefined,
+              bairro: "",
+              cidade: "",
+              estado: "",
+            }
+          : { ...defaultFormValues, ...initialData };
+      reset(dataToReset as DadosCadastraisFormData);
+    }
+  }, [initialData, mode, reset, defaultFormValues]);
 
-  // Observar valores para aplicar máscara dinamicamente
+  const mask = useMemo(() => new MaskPattern(), []);
+
   const watchedCpf = watch("cpf");
   const watchedTelefone = watch("telefone");
+  const watchedCep = watch("cep");
 
-  // Efeito para popular/resetar form
-  useEffect(() => {
-    if (open) {
-      if (client && (mode === ModalMode.EDIT || mode === ModalMode.VIEW)) {
-        setValue("cpf", client.cpf || "");
-        setValue("rg", client.rg || "");
-        setValue("endereco", client.endereco || "");
-        setValue("nome", client.nome || "");
-        setValue("telefone", client.telefone || "");
-        setValue("email", client.email || "");
-      } else {
-        reset(); // Limpa para os defaultValues
-      }
-    }
-  }, [client, mode, setValue, reset, open]);
+  const createMaskedInputHandler = useCallback(
+    (
+        fieldName: keyof DadosCadastraisFormData,
+        maskType: MaskPatternType,
+        maxLength?: number
+      ) =>
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value.replace(/\D/g, "");
+        let maskedValue = mask.applyMask(rawValue, maskType);
+        if (maxLength && maskedValue.length > maxLength) {
+          maskedValue = maskedValue.substring(0, maxLength);
+        }
+        setValue(fieldName, maskedValue as any, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      },
+    [mask, setValue]
+  );
 
-  // Handler para aplicar máscara de Telefone ao digitar
-  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/\D/g, ''); // Só dígitos
-    const maskedValue = mask.applyMask(rawValue, 'phone'); // Usa sua função de máscara
-    setValue("telefone", maskedValue, { shouldValidate: true });
-  };
+  const handleCpfChange = createMaskedInputHandler("cpf", "cpfCnpj", 14);
+  const handleTelefoneChange = createMaskedInputHandler(
+    "telefone",
+    "phone",
+    15
+  );
+  const handleCepChange = createMaskedInputHandler("cep", "cep", 9);
 
-  // Submit handler
-  const onSubmit: SubmitHandler<FormInputs> = (data) => {
+  const onSubmit: SubmitHandler<DadosCadastraisFormData> = async (data) => {
+    if (isViewMode) return;
+
     setIsSubmitting(true);
-    // Limpar máscaras antes de salvar
-    const cleanData = {
+    const cleanedData: Partial<DadosCadastraisFormData> = {
       ...data,
-      cpf: data.cpf.replace(/\D/g, ''),
-      telefone: data.telefone.replace(/\D/g, ''),
-      rg: data.rg ? data.rg.replace(/\D/g, '') : undefined, // Limpa RG se existir
+      cpf: String(data.cpf).replace(/\D/g, ""),
+      telefone: String(data.telefone).replace(/\D/g, ""),
+      cep: data.cep ? String(data.cep).replace(/\D/g, "") : undefined,
+      rg: data.rg || undefined,
+      email: data.email || undefined,
+      complemento: data.complemento || undefined,
+      data_nascimento: data.data_nascimento || undefined,
     };
+
+    if (!cleanedData.rg) delete cleanedData.rg;
+    if (!cleanedData.email) delete cleanedData.email;
+    if (!cleanedData.complemento) delete cleanedData.complemento;
+    if (!cleanedData.data_nascimento) delete cleanedData.data_nascimento;
+
+    let resultData: DadosCadastraisFormData | undefined = undefined;
+
     try {
-      onSave(cleanData);
+      if (mode === ModalMode.CREATE) {
+        const dataToInsert = { ...cleanedData };
+
+        const { data: newAluno, error } = await supabase
+          .from("alunos")
+          .insert([dataToInsert])
+          .select()
+          .single();
+
+        if (error) {
+          throw error;
+        }
+        resultData = newAluno as DadosCadastraisFormData;
+        console.log("Aluno criado:", newAluno);
+      } else if (mode === ModalMode.EDIT && alunoIdToEdit) {
+        const dataToUpdate = { ...cleanedData };
+        delete dataToUpdate.cpf;
+
+        const { data: updatedAluno, error } = await supabase
+          .from("alunos")
+          .update(dataToUpdate)
+          .eq("id", alunoIdToEdit)
+          .select()
+          .single();
+
+        if (error) {
+          throw error;
+        }
+        resultData = updatedAluno as DadosCadastraisFormData;
+        console.log("Aluno atualizado:", updatedAluno);
+      }
+
+      onSaveComplete?.(null, resultData, mode);
+      onClose();
+    } catch (error: any) {
+      console.error(
+        "Erro ao salvar dados cadastrais no Supabase:",
+        error.message || error
+      );
+      onSaveComplete?.(error, cleanedData as DadosCadastraisFormData, mode);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Funções handleWhatsApp e handleCall (sem mudanças, mas adicionando checagem de null/undefined)
-  const handleWhatsApp = (phone: string | undefined) => {
-    if (!phone) return;
-    const numericPhone = phone.replace(/\D/g, "");
-    if (numericPhone.length >= 10) {
-      window.open(`https://wa.me/55${numericPhone}`, "_blank");
-    } else {
-      alert("Número de telefone inválido para WhatsApp.");
-    }
-  };
-
-  const handleCall = (phone: string | undefined) => {
-    if (!phone) return;
-    const numericPhone = phone.replace(/\D/g, "");
-    if (numericPhone.length >= 10) {
-      window.open(`tel:+55${numericPhone}`, "_self");
-    } else {
-      alert("Número de telefone inválido para ligação.");
-    }
-  };
-
 
   if (!open) return null;
 
@@ -206,7 +202,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
       <Styles.ModalContainer>
         <Styles.ModalHeader>
           <Styles.ModalTitle>
-            {mode === ModalMode.CREATE && "Cadastrar Aluno"}
+            {mode === ModalMode.CREATE && "Novo Aluno"}
             {mode === ModalMode.VIEW && "Detalhes do Aluno"}
             {mode === ModalMode.EDIT && "Editar Aluno"}
           </Styles.ModalTitle>
@@ -214,164 +210,215 @@ const ClientModal: React.FC<ClientModalProps> = ({
         </Styles.ModalHeader>
 
         <Styles.ModalBody>
+          {/*@ts-expect-error*/}
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
-            {/* CPF (Obrigatório) */}
             <Styles.FormGroup>
-              <Styles.Label>
-                CPF{" "}
-                {!isViewMode && (
-                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
+              <Styles.Label htmlFor="nome">Nome Completo</Styles.Label>
+              <Styles.Input
+                id="nome"
+                {...register("nome")}
+                disabled={isViewMode}
+              />
+              {errors.nome && (
+                <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="cpf">CPF</Styles.Label>
+                <Styles.Input
+                  id="cpf"
+                  value={watchedCpf || ""}
+                  onChange={handleCpfChange}
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  disabled={isViewMode || (isEditMode && !!initialData?.cpf)}
+                />
+                {errors.cpf && (
+                  <Styles.ErrorMsg>{errors.cpf.message}</Styles.ErrorMsg>
                 )}
-              </Styles.Label>
-              {isViewMode ? (
-                // Aplicar máscara na visualização
-                <Styles.DisplayField>{client?.cpf ? mask.applyMask(client.cpf, "cpfCnpj") : '-'}</Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input
-                    type="text" {...register("cpf")}
-                  />
-                  {errors.cpf && (
-                    <Styles.ErrorMsg>{errors.cpf.message}</Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
-
-            {/* RG (Opcional) */}
-            <Styles.FormGroup>
-              <Styles.Label>RG</Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>{client?.rg || "-"}</Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input type="text" {...register("rg")} />
-                  {errors.rg && (
-                    <Styles.ErrorMsg>{errors.rg.message}</Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
-
-            {/* Endereço (Obrigatório) */}
-            <Styles.FormGroup>
-              <Styles.Label>
-                Endereço{" "}
-                {!isViewMode && (
-                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="rg">RG</Styles.Label>
+                <Styles.Input
+                  id="rg"
+                  {...register("rg")}
+                  disabled={isViewMode}
+                />
+                {errors.rg && (
+                  <Styles.ErrorMsg>{errors.rg.message}</Styles.ErrorMsg>
                 )}
-              </Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>{client?.endereco || "-"}</Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input type="text" {...register("endereco")} />
-                  {errors.endereco && (
-                    <Styles.ErrorMsg>{errors.endereco.message}</Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
+              </Styles.FormGroup>
+            </Styles.FormRow>
 
-            {/* Nome (Obrigatório) */}
-            <Styles.FormGroup>
-              <Styles.Label>
-                Nome{" "}
-                {!isViewMode && (
-                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="data_nascimento">
+                  Data de Nascimento
+                </Styles.Label>
+                <Styles.Input
+                  id="data_nascimento"
+                  type="date"
+                  {...register("data_nascimento")}
+                  disabled={isViewMode}
+                />
+                {errors.data_nascimento && (
+                  <Styles.ErrorMsg>
+                    {errors.data_nascimento.message}
+                  </Styles.ErrorMsg>
                 )}
-              </Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>{client?.nome || "-"}</Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input type="text" {...register("nome")} />
-                  {errors.nome && (
-                    <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
-
-            {/* Telefone (Obrigatório) */}
-            <Styles.FormGroup>
-              <Styles.Label>
-                Telefone{" "}
-                {!isViewMode && (
-                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="telefone">Telefone</Styles.Label>
+                <Styles.Input
+                  id="telefone"
+                  value={watchedTelefone || ""}
+                  onChange={handleTelefoneChange}
+                  maxLength={15}
+                  placeholder="(DDD) 9XXXX-XXXX"
+                  disabled={isViewMode}
+                />
+                {errors.telefone && (
+                  <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
                 )}
-              </Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>
-                  {client?.telefone
-                    ? mask.applyMask(client.telefone, "phone")
-                    : "-"}
-                </Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input
-                    type="text"
-                    placeholder="(DDD) 9XXXX-XXXX"
-                    // Usar value e onChange para controle da máscara
-                    value={watchedTelefone || ''}
-                    onChange={handleTelefoneChange}
-                    maxLength={15} // Limitar tamanho visual com máscara (ex: (DD) 9XXXX-XXXX)
-                  />
-                  {errors.telefone && (
-                    <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
+              </Styles.FormGroup>
+            </Styles.FormRow>
 
-            {/* Email (Opcional) */}
             <Styles.FormGroup>
-              <Styles.Label>E-mail</Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>{client?.email || "-"}</Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input type="email" {...register("email")} />
-                  {errors.email && (
-                    <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
-                  )}
-                </>
+              <Styles.Label htmlFor="email">E-mail</Styles.Label>
+              <Styles.Input
+                id="email"
+                type="email"
+                {...register("email")}
+                placeholder="email@exemplo.com"
+                disabled={isViewMode}
+              />
+              {errors.email && (
+                <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
 
-            {/* Botão de Submit */}
+            <hr
+              style={{
+                margin: "20px 0 15px 0",
+                borderColor: Styles.COLORS.borderDefault,
+                borderWidth: "0.5px",
+              }}
+            />
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="cep">CEP</Styles.Label>
+                <Styles.Input
+                  id="cep"
+                  value={watchedCep || ""}
+                  onChange={handleCepChange}
+                  maxLength={9}
+                  placeholder="00000-000"
+                  disabled={isViewMode}
+                />
+                {errors.cep && (
+                  <Styles.ErrorMsg>{errors.cep.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup style={{ flexGrow: 2 }}>
+                <Styles.Label htmlFor="rua">Rua</Styles.Label>
+                <Styles.Input
+                  id="rua"
+                  {...register("rua")}
+                  disabled={isViewMode}
+                />
+                {errors.rua && (
+                  <Styles.ErrorMsg>{errors.rua.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="numero">Número</Styles.Label>
+                <Styles.Input
+                  id="numero"
+                  {...register("numero")}
+                  disabled={isViewMode}
+                />
+                {errors.numero && (
+                  <Styles.ErrorMsg>{errors.numero.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="complemento">Complemento</Styles.Label>
+                <Styles.Input
+                  id="complemento"
+                  {...register("complemento")}
+                  disabled={isViewMode}
+                />
+                {errors.complemento && (
+                  <Styles.ErrorMsg>
+                    {errors.complemento.message}
+                  </Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup style={{ flexGrow: 2 }}>
+                <Styles.Label htmlFor="bairro">Bairro</Styles.Label>
+                <Styles.Input
+                  id="bairro"
+                  {...register("bairro")}
+                  disabled={isViewMode}
+                />
+                {errors.bairro && (
+                  <Styles.ErrorMsg>{errors.bairro.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormRow>
+              <Styles.FormGroup style={{ flexGrow: 2 }}>
+                <Styles.Label htmlFor="cidade">Cidade</Styles.Label>
+                <Styles.Input
+                  id="cidade"
+                  {...register("cidade")}
+                  disabled={isViewMode}
+                />
+                {errors.cidade && (
+                  <Styles.ErrorMsg>{errors.cidade.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="estado">Estado (UF)</Styles.Label>
+                <Styles.Select
+                  id="estado"
+                  {...register("estado")}
+                  disabled={isViewMode}
+                >
+                  <option value="">UF</option>
+                  {UFs.map((uf) => (
+                    <option key={uf} value={uf}>
+                      {uf}
+                    </option>
+                  ))}
+                </Styles.Select>
+                {errors.estado && (
+                  <Styles.ErrorMsg>{errors.estado.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
             {!isViewMode && (
-              <Styles.SubmitButton type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader />
-                ) : isEditMode ? (
-                  "Salvar"
-                ) : (
-                  "Cadastrar"
-                )}
-              </Styles.SubmitButton>
+              <Styles.SubmitButtonContainer>
+                <Styles.SubmitButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <Loader />
+                  ) : mode === ModalMode.EDIT ? (
+                    "Salvar Alterações"
+                  ) : (
+                    "Salvar Dados Cadastrais"
+                  )}
+                </Styles.SubmitButton>
+              </Styles.SubmitButtonContainer>
             )}
           </Styles.Form>
-
-          {/* Botões de Ação (View Mode) */}
-          {isViewMode && client && (
-            <Styles.FooterButtonsContainer>
-              <Styles.WhatsAppButton
-                onClick={() => handleWhatsApp(client?.telefone)}
-                title="Abrir WhatsApp"
-                disabled={!client?.telefone}
-              >
-                <FaWhatsapp />
-              </Styles.WhatsAppButton>
-              <Styles.CallButton
-                onClick={() => handleCall(client?.telefone)}
-                title="Ligar agora"
-                disabled={!client?.telefone}
-              >
-                <FaPhone />
-              </Styles.CallButton>
-            </Styles.FooterButtonsContainer>
-          )}
         </Styles.ModalBody>
       </Styles.ModalContainer>
     </Styles.ModalOverlay>

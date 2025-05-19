@@ -1,17 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import DefaultTable, { TableColumn } from "../../components/Table/DefaultTable";
 import * as Styles from "./Clients.styles";
 import { FiPlus } from "react-icons/fi";
-import ClientModal from "./components/ClientModal/ClientModal.tsx";
-import { supabase } from "../../lib/supabase.ts";
-import { Client } from "../../types/ClientTypes.js";
+import ClientModal from "./components/ClientModal/ClientModal";
+import { supabase } from "../../lib/supabase";
 import { toast, ToastContainer } from "react-toastify";
-import Loader from "../../components/Loader/Loader.tsx";
+import Loader from "../../components/Loader/Loader";
+import { ModalMode, DadosCadastraisFormData } from "./components/ClientModal/ClientModal.definitions";
 
-enum ModalMode {
-  CREATE = "create",
-  VIEW = "view",
-  EDIT = "edit",
+interface Client {
+  id: string;
+  nome: string;
+  cpf?: string;
+  rg?: string;
+  data_nascimento?: string;
+  telefone?: string;
+  email?: string;
+  cep?: string;
+  rua?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  ativo?: boolean; 
+  // Adicione quaisquer outros campos que sua tabela 'alunos' retorna e você usa.
+  // Campos de responsável e matrícula não ficam aqui, pois pertencem a outras lógicas/tabelas.
 }
 
 const columns: TableColumn<Client>[] = [
@@ -25,18 +39,13 @@ const Clients: React.FC = () => {
   const [contatos, setContatos] = useState<Client[]>([]);
   const [rowsPerPage, setRowsPerPage] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
-
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>(ModalMode.CREATE);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [onLoading, setLoading] = useState(false);
   const [inputSearch, setInputSearch] = useState<string>("");
 
-  useEffect(() => {
-    fetchClientes();
-  }, []);
-
-  const fetchClientes = async () => {
+  const fetchClientes = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -45,17 +54,23 @@ const Clients: React.FC = () => {
         .order("nome", { ascending: true });
       if (error) {
         toast.error("Erro ao buscar alunos.");
-        throw error;
+        console.error("Supabase error:", error)
+        return;
       }
       if (data) {
         setContatos(data as Client[]);
       }
     } catch (err) {
       console.error("Erro ao buscar alunos:", err);
+      toast.error("Erro inesperado ao buscar alunos.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchClientes();
+  }, [fetchClientes]);
 
   const adjustString = (text: string) => {
     return text
@@ -98,71 +113,42 @@ const Clients: React.FC = () => {
 
   const handleCloseModal = () => {
     setModalOpen(false);
+    setSelectedClient(null);
   };
 
-  type OmitId = Omit<Client, "id">;
-
-  const handleSave = async (data: OmitId) => {
-    try {
-      if (modalMode === ModalMode.CREATE) {
-        const { data: created, error } = await supabase
-          .from("alunos")
-          .insert([data])
-          .select();
-        if (error) {
-          toast.error("Erro ao cadastrar aluno.");
-          throw error;
-        }
-        if (created && created.length > 0) {
-          setContatos((prev) => [...prev, created[0] as Client]);
-          toast.success("Aluno cadastrado com sucesso!");
-        }
-      } else if (modalMode === ModalMode.EDIT && selectedClient) {
-        const { data: updated, error } = await supabase
-          .from("alunos")
-          .update(data)
-          .eq("id", selectedClient.id)
-          .select();
-        if (error) {
-          toast.error("Erro ao atualizar aluno.");
-          throw error;
-        }
-        if (updated && updated.length > 0) {
-          const updatedClient = updated[0] as Client;
-          setContatos((prev) =>
-            prev.map((c) => (c.id === selectedClient.id ? updatedClient : c))
-          );
-          toast.success("Aluno atualizado com sucesso!");
-        }
-      }
-      setModalOpen(false);
-    } catch (err) {
-      console.error("Erro ao salvar aluno:", err);
+  const handleSaveComplete = useCallback((
+    error: any | null,
+    savedData?: Partial<DadosCadastraisFormData>, 
+    operationMode?: ModalMode
+  ) => {
+    if (error) {
+      toast.error(`Erro ao ${operationMode === ModalMode.CREATE ? 'cadastrar' : 'atualizar'} aluno: ${error.message || 'Erro desconhecido'}`);
+    } else {
+      toast.success(`Aluno ${operationMode === ModalMode.CREATE ? 'cadastrado' : 'atualizado'} com sucesso!`);
+      fetchClientes();
+      handleCloseModal();
     }
-  };
+  }, [fetchClientes]);
 
-  const handleDelete = async (client: Client) => {
-    const confirmDelete = window.confirm(
-      `Tem certeza que deseja excluir o aluno: ${client.nome}?`
-    );
-    if (!confirmDelete) return;
-
-    try {
-      const { error } = await supabase
-        .from("clientes")
-        .delete()
-        .eq("id", client.id);
-
-      if (error) {
-        toast.error("Erro ao excluir cliente.");
-        throw error;
-      }
-
-      setContatos((prev) => prev.filter((c) => c.id !== client.id));
-      toast.success("Cliente excluído com sucesso!");
-    } catch (err) {
-      console.error("Erro ao excluir cliente:", err);
+  const getInitialModalData = (): Partial<DadosCadastraisFormData> | undefined => {
+    if ((modalMode === ModalMode.EDIT || modalMode === ModalMode.VIEW) && selectedClient) {
+      return {
+        nome: selectedClient.nome,
+        cpf: selectedClient.cpf,
+        rg: selectedClient.rg,
+        data_nascimento: selectedClient.data_nascimento,
+        telefone: selectedClient.telefone,
+        email: selectedClient.email,
+        cep: selectedClient.cep,
+        rua: selectedClient.rua,
+        numero: selectedClient.numero,
+        complemento: selectedClient.complemento,
+        bairro: selectedClient.bairro,
+        cidade: selectedClient.cidade,
+        estado: selectedClient.estado,
+      };
     }
+    return undefined;
   };
 
   return (
@@ -177,22 +163,22 @@ const Clients: React.FC = () => {
         </Styles.CadastrarButton>
       </Styles.Header>
 
-      {onLoading ? (
+      {onLoading && !modalOpen ? (
         <Styles.LoaderDiv>
           <Loader color="#000" />
         </Styles.LoaderDiv>
       ) : (
         <>
-          <div style={{ maxWidth: 400 }}>
+          <div style={{ maxWidth: 400, marginBottom: '20px' }}>
             <Styles.Input
               value={inputSearch}
               onChange={(e) => setInputSearch(e.target.value)}
-              placeholder="Pesquisar Aluno"
+              placeholder="Pesquisar Aluno por Nome"
             />
           </div>
           <DefaultTable
             data={currentData.filter((item) =>
-              adjustString(item.nome)?.includes(adjustString(inputSearch))
+              item.nome && adjustString(item.nome).includes(adjustString(inputSearch))
             )}
             columns={columns}
             rowsPerPage={rowsPerPage}
@@ -201,22 +187,25 @@ const Clients: React.FC = () => {
             onPageChange={handlePageChange}
             onRowsPerPageChange={handleRowsPerPageChange}
             showActions
+            noDelete
             onView={openViewModal}
             onEdit={openEditModal}
-            onDelete={handleDelete}
           />
         </>
       )}
 
-      <ClientModal
-        open={modalOpen}
-        mode={modalMode}
-        client={selectedClient}
-        onClose={handleCloseModal}
-        onSave={handleSave}
-      />
+      {modalOpen && (
+          <ClientModal
+            open={modalOpen}
+            mode={modalMode}
+            initialData={getInitialModalData()}
+            alunoIdToEdit={modalMode === ModalMode.EDIT && selectedClient ? selectedClient.id : undefined}
+            onClose={handleCloseModal}
+            onSaveComplete={handleSaveComplete}
+          />
+      )}
 
-      <ToastContainer />
+      <ToastContainer autoClose={3000} hideProgressBar />
     </Styles.Container>
   );
 };
