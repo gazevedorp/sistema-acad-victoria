@@ -5,4 +5,7 @@ export interface Client {
   telefone: string;
   data_nascimento: string;
   ativo: boolean;
+  cpf: string;
+  rg: string;
+  endereco: string;
 }

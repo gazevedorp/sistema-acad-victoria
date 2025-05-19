@@ -1,13 +1,27 @@
-import React, { useMemo, useState } from "react";
-import Switch from "react-switch";
-import { useForm, SubmitHandler, useWatch } from "react-hook-form";
+import React, { useMemo, useState, useEffect } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { FaWhatsapp, FaPhone } from "react-icons/fa";
 import * as Styles from "./ClientModal.styles";
-import { Client } from "../../../../types/ClientTypes";
-import { MaskPattern } from "../../../../utils/formatter";
+// Removido import de ClientTypes - tipo será definido aqui
+import { MaskPattern } from "../../../../utils/formatter"; // Assumindo que você tem ou criará máscara de CPF aqui
 import Loader from "../../../../components/Loader/Loader";
+
+// --- Definição do Tipo Client (direto no arquivo) ---
+interface Client {
+  id?: string; // Presente na edição/visualização
+  cpf: string; // Campo renomeado e obrigatório
+  rg?: string; // Opcional
+  endereco: string; // Obrigatório
+  nome: string; // Obrigatório
+  telefone: string; // Obrigatório
+  email?: string; // Opcional
+  // Campos de timestamp podem existir no objeto completo, mas não no form
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+// -----------------------------------------------------
 
 // eslint-disable-next-line react-refresh/only-export-components
 export enum ModalMode {
@@ -19,34 +33,73 @@ export enum ModalMode {
 interface ClientModalProps {
   open: boolean;
   mode: ModalMode;
-  client: Omit<Client, "id"> | Client | null;
+  client: Omit<Client, "id" | "created_at" | "updated_at"> | Client | null; // Ajustado para refletir Client local
   onClose: () => void;
-  onSave: (data: Omit<Client, "id">) => void;
+  onSave: (data: Omit<Client, "id" | "created_at" | "updated_at">) => void; // Ajustado
 }
 
-// Validação: birthday deve estar no formato dd/mm/yyyy
+// --- Função de Validação de CPF (Exemplo Básico) ---
+// Fonte: Implementações comuns encontradas online (verificar adequação para seu caso)
+function isValidCPF(cpf: string | null | undefined): boolean {
+  if (!cpf) return false;
+  cpf = cpf.replace(/[^\d]+/g, ''); // Remove caracteres não numéricos
+  if (cpf.length !== 11) return false;
+  // Elimina CPFs invalidos conhecidos
+  if (/^(\d)\1+$/.test(cpf)) return false;
+
+  let add = 0;
+  for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
+  let rev = 11 - (add % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(cpf.charAt(9))) return false;
+
+  add = 0;
+  for (let i = 0; i < 10; i++) add += parseInt(cpf.charAt(i)) * (11 - i);
+  rev = 11 - (add % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(cpf.charAt(10))) return false;
+
+  return true;
+}
+// -----------------------------------------------------
+
+
+// --- Schema de Validação Atualizado ---
 const schema = yup.object().shape({
+  cpf: yup
+    .string()
+    .required("CPF é obrigatório")
+    .transform(value => value.replace(/[^\d]/g, '')) // Remove máscara antes de validar
+    .test('cpf-valido', 'CPF inválido', value => isValidCPF(value)), // Usa a função de validação
+  rg: yup.string(), // Opcional
+  endereco: yup
+    .string()
+    .required("Endereço é obrigatório")
+    .min(5, "Endereço muito curto"),
   nome: yup
     .string()
     .required("Nome é obrigatório")
     .min(3, "Mínimo de 3 caracteres"),
-  email: yup.string().email("E-mail inválido"),
-  data_nascimento: yup.string(),
   telefone: yup
     .string()
     .required("Telefone é obrigatório")
-    .matches(/^\d+$/, "Telefone deve conter apenas números") // Apenas números
-    .matches(/^\d{10,11}$/, "Telefone deve ter DDD"), // Validação do DDD e comprimento
-  ativo: yup.boolean().required(),
+    .transform(value => value.replace(/[^\d]/g, '')) // Remove máscara antes de validar
+    .matches(/^\d{10,11}$/, "Telefone inválido (DDD + 8 ou 9 dígitos)"),
+  email: yup.string().email("E-mail inválido"), // Opcional mas valida formato
 });
+// -----------------------------------------
 
+
+// --- Tipo para Inputs do Formulário ---
 type FormInputs = {
+  cpf: string;
+  rg?: string;
+  endereco: string;
   nome: string;
-  email: string;
-  data_nascimento: string;
   telefone: string;
-  ativo: boolean;
+  email?: string;
 };
+// -------------------------------------
 
 const ClientModal: React.FC<ClientModalProps> = ({
   open,
@@ -62,100 +115,91 @@ const ClientModal: React.FC<ClientModalProps> = ({
     register,
     handleSubmit,
     setValue,
-    control,
-    watch,
     formState: { errors },
+    reset,
+    watch // Adicionar watch para máscara de CPF e Telefone
   } = useForm<FormInputs>({
-    //@ts-expect-error tupe later
     resolver: yupResolver(schema),
+    defaultValues: {
+      cpf: '',
+      rg: '',
+      endereco: '',
+      nome: '',
+      telefone: '',
+      email: '',
+    }
   });
 
   const mask = useMemo(() => new MaskPattern(), []);
-  const activeValue = useWatch({ control, name: "ativo" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  React.useEffect(() => {
-    if (client) {
-      setValue("nome", client.nome || "");
-      setValue("email", client.email || "");
+  // Observar valores para aplicar máscara dinamicamente
+  const watchedCpf = watch("cpf");
+  const watchedTelefone = watch("telefone");
 
-      if (client.data_nascimento) {
-        const bdStr = convertDateToDDMMYYYY(client.data_nascimento);
-        setValue("data_nascimento", bdStr);
+  // Efeito para popular/resetar form
+  useEffect(() => {
+    if (open) {
+      if (client && (mode === ModalMode.EDIT || mode === ModalMode.VIEW)) {
+        setValue("cpf", client.cpf || "");
+        setValue("rg", client.rg || "");
+        setValue("endereco", client.endereco || "");
+        setValue("nome", client.nome || "");
+        setValue("telefone", client.telefone || "");
+        setValue("email", client.email || "");
       } else {
-        setValue("data_nascimento", "");
+        reset(); // Limpa para os defaultValues
       }
-
-      setValue("telefone", client.telefone || "");
-      setValue("ativo", client.ativo ?? false);
-    } else {
-      setValue("nome", "");
-      setValue("email", "");
-      setValue("data_nascimento", "");
-      setValue("telefone", "");
-      setValue("ativo", true);
     }
-  }, [client, setValue]);
+  }, [client, mode, setValue, reset, open]);
 
-  // FUNÇÃO QUE MASCARA O INPUT DA DATA
-  const handleBirthdayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, ""); // remove tudo que não for dígito
-
-    // Limitamos a 8 dígitos (ddmmYYYY)
-    if (val.length > 8) {
-      val = val.slice(0, 8);
-    }
-
-    // Se tiver >= 5 dígitos, formatamos dd/mm/yyyy
-    if (val.length >= 5) {
-      val = val.replace(/^(\d{2})(\d{2})(\d{1,4})/, "$1/$2/$3");
-    } else if (val.length >= 3) {
-      // Se entre 3 e 4 dígitos, formatamos dd/mm
-      val = val.replace(/^(\d{2})(\d{1,2})/, "$1/$2");
-    }
-
-    // Atualiza o RHF
-    setValue("data_nascimento", val, { shouldValidate: true });
+  // Handler para aplicar máscara de Telefone ao digitar
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, ''); // Só dígitos
+    const maskedValue = mask.applyMask(rawValue, 'phone'); // Usa sua função de máscara
+    setValue("telefone", maskedValue, { shouldValidate: true });
   };
 
+  // Submit handler
   const onSubmit: SubmitHandler<FormInputs> = (data) => {
+    setIsSubmitting(true);
+    // Limpar máscaras antes de salvar
+    const cleanData = {
+      ...data,
+      cpf: data.cpf.replace(/\D/g, ''),
+      telefone: data.telefone.replace(/\D/g, ''),
+      rg: data.rg ? data.rg.replace(/\D/g, '') : undefined, // Limpa RG se existir
+    };
     try {
-      setIsSubmitting(true);
-      onSave(data);
+      onSave(cleanData);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Converte 'client.birthday' (string 'yyyy-mm-dd' ou Date) para dd/mm/yyyy
-  const convertDateToDDMMYYYY = (value: string | Date): string => {
-    if (value instanceof Date) {
-      const day = String(value.getDate()).padStart(2, "0");
-      const month = String(value.getMonth() + 1).padStart(2, "0");
-      const year = value.getFullYear();
-      return `${day}/${month}/${year}`;
+  // Funções handleWhatsApp e handleCall (sem mudanças, mas adicionando checagem de null/undefined)
+  const handleWhatsApp = (phone: string | undefined) => {
+    if (!phone) return;
+    const numericPhone = phone.replace(/\D/g, "");
+    if (numericPhone.length >= 10) {
+      window.open(`https://wa.me/55${numericPhone}`, "_blank");
+    } else {
+      alert("Número de telefone inválido para WhatsApp.");
     }
-    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-      const [year, month, day] = value.split("-");
-      return `${day}/${month}/${year}`;
-    }
-    return value; // Se já estiver no formato dd/mm/yyyy ou outro
   };
+
+  const handleCall = (phone: string | undefined) => {
+    if (!phone) return;
+    const numericPhone = phone.replace(/\D/g, "");
+    if (numericPhone.length >= 10) {
+      window.open(`tel:+55${numericPhone}`, "_self");
+    } else {
+      alert("Número de telefone inválido para ligação.");
+    }
+  };
+
 
   if (!open) return null;
-
-  const handleWhatsApp = (phone: string) => {
-    const numericPhone = phone.replace(/\D/g, "");
-    window.open(`https://wa.me/55${numericPhone}`, "_blank");
-  };
-
-  const handleCall = (phone: string) => {
-    const numericPhone = phone.replace(/\D/g, "");
-    window.open(`tel:+55${numericPhone}`, "_self");
-  };
-
-  // Valor atual do campo "birthday" vindo do watch, para exibir no input
-  const birthdayValue = watch("data_nascimento");
 
   return (
     <Styles.ModalOverlay>
@@ -170,8 +214,66 @@ const ClientModal: React.FC<ClientModalProps> = ({
         </Styles.ModalHeader>
 
         <Styles.ModalBody>
-          {/*@ts-expect-error improve later */}
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
+            {/* CPF (Obrigatório) */}
+            <Styles.FormGroup>
+              <Styles.Label>
+                CPF{" "}
+                {!isViewMode && (
+                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
+                )}
+              </Styles.Label>
+              {isViewMode ? (
+                // Aplicar máscara na visualização
+                <Styles.DisplayField>{client?.cpf ? mask.applyMask(client.cpf, "cpfCnpj") : '-'}</Styles.DisplayField>
+              ) : (
+                <>
+                  <Styles.Input
+                    type="text" {...register("cpf")}
+                  />
+                  {errors.cpf && (
+                    <Styles.ErrorMsg>{errors.cpf.message}</Styles.ErrorMsg>
+                  )}
+                </>
+              )}
+            </Styles.FormGroup>
+
+            {/* RG (Opcional) */}
+            <Styles.FormGroup>
+              <Styles.Label>RG</Styles.Label>
+              {isViewMode ? (
+                <Styles.DisplayField>{client?.rg || "-"}</Styles.DisplayField>
+              ) : (
+                <>
+                  <Styles.Input type="text" {...register("rg")} />
+                  {errors.rg && (
+                    <Styles.ErrorMsg>{errors.rg.message}</Styles.ErrorMsg>
+                  )}
+                </>
+              )}
+            </Styles.FormGroup>
+
+            {/* Endereço (Obrigatório) */}
+            <Styles.FormGroup>
+              <Styles.Label>
+                Endereço{" "}
+                {!isViewMode && (
+                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
+                )}
+              </Styles.Label>
+              {isViewMode ? (
+                <Styles.DisplayField>{client?.endereco || "-"}</Styles.DisplayField>
+              ) : (
+                <>
+                  <Styles.Input type="text" {...register("endereco")} />
+                  {errors.endereco && (
+                    <Styles.ErrorMsg>{errors.endereco.message}</Styles.ErrorMsg>
+                  )}
+                </>
+              )}
+            </Styles.FormGroup>
+
+            {/* Nome (Obrigatório) */}
             <Styles.FormGroup>
               <Styles.Label>
                 Nome{" "}
@@ -180,16 +282,10 @@ const ClientModal: React.FC<ClientModalProps> = ({
                 )}
               </Styles.Label>
               {isViewMode ? (
-                <Styles.DisplayField>{client?.nome}</Styles.DisplayField>
+                <Styles.DisplayField>{client?.nome || "-"}</Styles.DisplayField>
               ) : (
                 <>
-                  <Styles.Input
-                    type="text"
-                    disabled={isViewMode}
-                    // Mantemos register para ter a validação do RHF,
-                    // mas podemos passar {...register("name")} sem onChange custom.
-                    {...register("nome")}
-                  />
+                  <Styles.Input type="text" {...register("nome")} />
                   {errors.nome && (
                     <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
                   )}
@@ -197,52 +293,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
               )}
             </Styles.FormGroup>
 
-            <Styles.FormGroup>
-              <Styles.Label>E-mail</Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>{client?.email}</Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input
-                    type="email"
-                    disabled={isViewMode}
-                    {...register("email")}
-                  />
-                  {errors.email && (
-                    <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
-
-            <Styles.FormGroup>
-              <Styles.Label>Data de Nascimento</Styles.Label>
-              {isViewMode ? (
-                <Styles.DisplayField>
-                  {client?.data_nascimento
-                    ? mask.applyMask(client.data_nascimento, "date")
-                    : "-"}
-                </Styles.DisplayField>
-              ) : (
-                <>
-                  <Styles.Input
-                    type="text"
-                    placeholder="dd/mm/yyyy"
-                    disabled={isViewMode}
-                    // Em vez de {...register("birthday")} com onChange,
-                    // Usamos watch + handleBirthdayChange
-                    value={birthdayValue ?? ""}
-                    onChange={handleBirthdayChange}
-                  />
-                  {errors.data_nascimento && (
-                    <Styles.ErrorMsg>
-                      {errors.data_nascimento.message}
-                    </Styles.ErrorMsg>
-                  )}
-                </>
-              )}
-            </Styles.FormGroup>
-
+            {/* Telefone (Obrigatório) */}
             <Styles.FormGroup>
               <Styles.Label>
                 Telefone{" "}
@@ -254,14 +305,17 @@ const ClientModal: React.FC<ClientModalProps> = ({
                 <Styles.DisplayField>
                   {client?.telefone
                     ? mask.applyMask(client.telefone, "phone")
-                    : ""}
+                    : "-"}
                 </Styles.DisplayField>
               ) : (
                 <>
                   <Styles.Input
                     type="text"
-                    disabled={isViewMode}
-                    {...register("telefone")}
+                    placeholder="(DDD) 9XXXX-XXXX"
+                    // Usar value e onChange para controle da máscara
+                    value={watchedTelefone || ''}
+                    onChange={handleTelefoneChange}
+                    maxLength={15} // Limitar tamanho visual com máscara (ex: (DD) 9XXXX-XXXX)
                   />
                   {errors.telefone && (
                     <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
@@ -270,29 +324,22 @@ const ClientModal: React.FC<ClientModalProps> = ({
               )}
             </Styles.FormGroup>
 
+            {/* Email (Opcional) */}
             <Styles.FormGroup>
-              <Styles.Label>
-                Status{" "}
-                {!isViewMode && (
-                  <Styles.LabelRequired>(Obrigatório)</Styles.LabelRequired>
-                )}
-              </Styles.Label>
+              <Styles.Label>E-mail</Styles.Label>
               {isViewMode ? (
-                <Styles.DisplayField>
-                  {client?.ativo ? "Ativo" : "Inativo"}
-                </Styles.DisplayField>
+                <Styles.DisplayField>{client?.email || "-"}</Styles.DisplayField>
               ) : (
-                <Switch
-                  checked={activeValue}
-                  onChange={(checked) => setValue("ativo", checked)}
-                  onColor="#0D88CB"
-                  offColor="#ccc"
-                  checkedIcon={false}
-                  uncheckedIcon={false}
-                />
+                <>
+                  <Styles.Input type="email" {...register("email")} />
+                  {errors.email && (
+                    <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
+                  )}
+                </>
               )}
             </Styles.FormGroup>
 
+            {/* Botão de Submit */}
             {!isViewMode && (
               <Styles.SubmitButton type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
@@ -306,17 +353,20 @@ const ClientModal: React.FC<ClientModalProps> = ({
             )}
           </Styles.Form>
 
-          {isViewMode && (
+          {/* Botões de Ação (View Mode) */}
+          {isViewMode && client && (
             <Styles.FooterButtonsContainer>
               <Styles.WhatsAppButton
-                onClick={() => handleWhatsApp(client?.telefone || "")}
+                onClick={() => handleWhatsApp(client?.telefone)}
                 title="Abrir WhatsApp"
+                disabled={!client?.telefone}
               >
                 <FaWhatsapp />
               </Styles.WhatsAppButton>
               <Styles.CallButton
-                onClick={() => handleCall(client?.telefone || "")}
+                onClick={() => handleCall(client?.telefone)}
                 title="Ligar agora"
+                disabled={!client?.telefone}
               >
                 <FaPhone />
               </Styles.CallButton>

@@ -112,6 +112,7 @@ export const SubmitButton = styled.button`
   color: #fff;
   width: 140px;
   font-size: 14px;
+  margin-top: 10px;
   margin-bottom: 8px;
   padding: 10px 20px;
   border: none;
@@ -138,7 +139,7 @@ export const FooterButtonsContainer = styled.div`
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 14px;
   margin-bottom: 6px;
 `;
 
