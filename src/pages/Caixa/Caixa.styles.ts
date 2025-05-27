@@ -1,5 +1,15 @@
 import styled from 'styled-components';
 
+const COLORS = {
+  primary: '#0898e6',
+  primaryDarker: '#0b5ed7',
+  textBody: '#212529',
+  textMuted: '#6c757d',
+  borderDefault: '#dee2e6',
+  white: '#fff',
+  danger: '#dc3545',
+}
+
 export const Container = styled.div`
   width: 100%;
   padding: 24px;
@@ -87,5 +97,28 @@ export const CadastrarButton = styled.button`
   background: #0d88cb;
   &:hover {
     background: #0898e6;
+  }
+`;
+
+export const FecharCaixaButton = styled.button`
+  background-color: ${COLORS.danger}; // Ou uma cor diferente para fechamento
+  color: white;
+  padding: 8px 15px; // Ajuste o padding conforme o CadastrarButton
+  border: none;
+  border-radius: 3px; // Consistente com outros botões
+  cursor: pointer;
+  font-size: 0.9rem; // Consistente
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: #c82333; // Tom mais escuro do danger
+  }
+  &:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;
   }
 `;

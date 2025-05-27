@@ -1,52 +1,58 @@
 import React, { useEffect, useState, useCallback } from "react";
 import * as Styles from "./Home.styles";
 import { supabase } from "../../lib/supabase";
-import { Client } from "../../types/ClientTypes";
+import { Client } from "../../types/ClientTypes"; // Seu tipo para Aluno
 import Loader from "../../components/Loader/Loader";
-// Clients import não é usado aqui, removido se não for necessário para outro fim
-// import Clients from "../Clients/Clients";
+import { User } from "@supabase/supabase-js"; // Tipo User do Supabase
 
-interface FinanceiroSummaryItem {
+// Interface para as movimentações do caixa ativo
+interface MovimentacaoCaixaAtivo {
   tipo: string;
   valor: number;
-  created_at: string;
+}
+
+// Interface para o caixa ativo do usuário
+interface ActiveCaixaInfo {
+  id: string;
+  usuario_id: string;
+  // Adicione outros campos se precisar exibir, ex: data_abertura
 }
 
 const Home: React.FC = () => {
   const [clientsActive, setActiveClients] = useState<Client[]>([]);
-  // const [clients, setClients] = useState<Client[]>([]); // Estado 'clients' não parece estar sendo usado no JSX final
-  const [onLoading, setLoading] = useState(false);
+  const [onLoading, setLoading] = useState(true); // Inicia como true
 
-  const [totalEntradasHoje, setTotalEntradasHoje] = useState<number>(0);
-  const [totalSaidasHoje, setTotalSaidasHoje] = useState<number>(0);
+  const [totalEntradasCaixaAberto, setTotalEntradasCaixaAberto] = useState<number>(0);
+  const [totalSaidasCaixaAberto, setTotalSaidasCaixaAberto] = useState<number>(0);
+  
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activeCaixa, setActiveCaixa] = useState<ActiveCaixaInfo | null>(null);
 
-  const fetchClientesEFinanceiro = useCallback(async () => {
+  const fetchHomePageData = useCallback(async (userId: string | undefined, caixaId: string | undefined) => {
     setLoading(true);
     try {
-      const [clientesRes, financeiroRes] = await Promise.all([
-        supabase
-          .from("alunos")
-          .select(
-            "id, nome, ativo, data_nascimento, telefone, email, cep, rua, numero, complemento, bairro, cidade, estado"
-          ), // Selecionando campos para Client
-        supabase
+      const fetchClientesPromise = supabase
+        .from("alunos")
+        .select("id, nome, ativo"); // Selecione apenas os campos necessários
+
+      let fetchFinanceiroPromise;
+      if (userId && caixaId) {
+        fetchFinanceiroPromise = supabase
           .from("financeiro")
-          .select("tipo, valor, created_at")
-          .gte(
-            "created_at",
-            new Date().toISOString().split("T")[0] + "T00:00:00.000Z"
-          )
-          .lte(
-            "created_at",
-            new Date().toISOString().split("T")[0] + "T23:59:59.999Z"
-          ),
+          .select("tipo, valor")
+          .eq("caixa_id", caixaId); // Filtra pelo ID do caixa ativo
+      } else {
+        fetchFinanceiroPromise = Promise.resolve({ data: [], error: null }); // Se não há caixa ativo, não busca financeiro
+      }
+
+      const [clientesRes, financeiroRes] = await Promise.all([
+        fetchClientesPromise,
+        fetchFinanceiroPromise,
       ]);
 
       if (clientesRes.error) {
         console.error("Erro ao buscar clientes:", clientesRes.error.message);
-        // toast.error("Erro ao buscar clientes."); // Adicione toast se desejar
       } else if (clientesRes.data) {
-        // setClients(clientesRes.data as Client[]); // Se precisar da lista completa
         setActiveClients(
           clientesRes.data.filter((item) => item.ativo) as Client[]
         );
@@ -54,35 +60,71 @@ const Home: React.FC = () => {
 
       if (financeiroRes.error) {
         console.error(
-          "Erro ao buscar resumo financeiro:",
+          "Erro ao buscar resumo financeiro do caixa:",
           financeiroRes.error.message
         );
-        // toast.error("Erro ao buscar resumo financeiro.");
-      } else if (financeiroRes.data) {
-        const movimentacoesHoje = financeiroRes.data as FinanceiroSummaryItem[];
+        setTotalEntradasCaixaAberto(0);
+        setTotalSaidasCaixaAberto(0);
+      } else if (financeiroRes.data && caixaId) { // Processa apenas se houve busca por caixaId
+        const movimentacoesCaixa = financeiroRes.data as MovimentacaoCaixaAtivo[];
         let entradas = 0;
         let saidas = 0;
-        movimentacoesHoje.forEach((mov) => {
+        movimentacoesCaixa.forEach((mov) => {
+          // Use os mesmos 'tipo' que você salva na tabela 'financeiro'
           if (mov.tipo === "pagamento" || mov.tipo === "venda") {
             entradas += mov.valor;
           } else if (mov.tipo === "saida") {
             saidas += mov.valor;
           }
         });
-        setTotalEntradasHoje(entradas);
-        setTotalSaidasHoje(saidas);
+        setTotalEntradasCaixaAberto(entradas);
+        setTotalSaidasCaixaAberto(saidas);
+      } else {
+        setTotalEntradasCaixaAberto(0);
+        setTotalSaidasCaixaAberto(0);
       }
     } catch (err) {
       console.error("Erro ao buscar dados da home:", err);
-      // toast.error("Erro inesperado ao carregar dados.");
+      setTotalEntradasCaixaAberto(0);
+      setTotalSaidasCaixaAberto(0);
     } finally {
       setLoading(false);
     }
-  }, []); // Removidas dependências que são estáveis ou gerenciadas internamente
+  }, []);
 
   useEffect(() => {
-    fetchClientesEFinanceiro();
-  }, [fetchClientesEFinanceiro]);
+    const checkUserAndLoadData = async () => {
+        setLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUser(user);
+
+        if (user) {
+            const { data: caixaData, error: caixaError } = await supabase
+            .from('caixas')
+            .select('id, usuario_id')
+            .eq('usuario_id', user.id)
+            .eq('status', 'aberto')
+            .maybeSingle();
+
+            if (caixaError) {
+                console.error("Erro ao buscar caixa aberto para home:", caixaError.message);
+                setActiveCaixa(null);
+                await fetchHomePageData(user.id, undefined); // Busca clientes, financeiro será zero
+            } else {
+                const currentActiveCaixa = caixaData ? { id: caixaData.id, usuario_id: caixaData.usuario_id } : null;
+                setActiveCaixa(currentActiveCaixa);
+                await fetchHomePageData(user.id, currentActiveCaixa?.id);
+            }
+        } else {
+            // Usuário não logado, não há caixa ativo dele
+            setActiveCaixa(null);
+            await fetchHomePageData(undefined, undefined); // Busca apenas clientes ou dados públicos
+            setLoading(false); // Garante que o loading pare se não houver usuário
+        }
+    };
+    checkUserAndLoadData();
+  }, [fetchHomePageData]);
+
 
   return (
     <Styles.Container>
@@ -90,7 +132,7 @@ const Home: React.FC = () => {
         <div>
           <Styles.Title>Resumos</Styles.Title>
           <Styles.Subtitle>
-            Seja bem-vindo a sua plataforma de gerenciamento
+            Seja bem-vindo à sua plataforma de gerenciamento
           </Styles.Subtitle>
         </div>
       </Styles.Header>
@@ -108,33 +150,27 @@ const Home: React.FC = () => {
             </Styles.CardLabel>
           </Styles.Card>
 
-          {/* Card para Entradas do Dia */}
           <Styles.Card>
             <Styles.CardNumber style={{ color: Styles.COLORS.success }}>
-              {" "}
-              {/* Cor verde para entradas */}
-              {totalEntradasHoje.toLocaleString("pt-BR", {
+              {totalEntradasCaixaAberto.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}
             </Styles.CardNumber>
             <Styles.CardLabel>
-              Entrada(s) <br /> Hoje
+              Entradas <br /> (Caixa Aberto Atual)
             </Styles.CardLabel>
           </Styles.Card>
 
-          {/* Card para Saídas do Dia */}
           <Styles.Card>
             <Styles.CardNumber style={{ color: Styles.COLORS.danger }}>
-              {" "}
-              {/* Cor vermelha para saídas */}
-              {totalSaidasHoje.toLocaleString("pt-BR", {
+              {totalSaidasCaixaAberto.toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })}
             </Styles.CardNumber>
             <Styles.CardLabel>
-              Saída(s) <br /> Hoje
+              Saídas <br /> (Caixa Aberto Atual)
             </Styles.CardLabel>
           </Styles.Card>
         </Styles.CardContainer>
