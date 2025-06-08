@@ -10,6 +10,7 @@ import Turmas from "../pages/Turmas/Turmas";
 import Relatorios from "../pages/Relatorios/Relatorios";
 import Plans from "../pages/Planos/Planos";
 import Caixa from "../pages/Caixa/Caixa";
+import Modalidades from "../pages/Modalidades/Modalidades";
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -34,6 +35,7 @@ const AppRoutes: React.FC = () => {
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="planos" element={<Plans />} />
           <Route path="caixa" element={<Caixa />} />
+          <Route path="modalidades" element={<Modalidades />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

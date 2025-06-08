@@ -31,6 +31,34 @@ export const Subtitle = styled.p`
   margin: 0;
 `;
 
+export const CadastrarButton = styled.button`
+  color: #fff;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding-bottom: 10px;
+  align-self: flex-start;
+  background: #0d88cb;
+  &:hover {
+    background: #0898e6;
+  }
+`;
+
+export const ActionIconsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+`;
+
+export const ActionLabel = styled.span`
+  margin-right: 8px;
+  font-size: 14px;
+  color: #666;
+`;
+
 export const LoaderDiv = styled.div`
   height: 160px;
   display: flex;

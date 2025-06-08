@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 export const Container = styled.div`
   width: 100%;
@@ -11,12 +11,6 @@ export const Header = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 24px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
 `;
 
 export const Title = styled.h1`

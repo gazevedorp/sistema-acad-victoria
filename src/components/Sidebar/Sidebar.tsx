@@ -11,6 +11,7 @@ import {
   FiTable,
   FiFile,
   FiBox,
+  FiList, // Added FiList for Modalidades
 } from "react-icons/fi";
 import { useAuthStore } from "../../store/authStore";
 
@@ -50,7 +51,8 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
     { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
     { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
     { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
-    // { icon: <FiBarChart2 />, text: "Relatorios [F7]", route: "/relatorios" },
+    { icon: <FiList />, text: "Modalidades [F7]", route: "/modalidades" }, // Added Modalidades
+    // { icon: <FiBarChart2 />, text: "Relatorios [F8]", route: "/relatorios" }, // Adjusted F-key if needed
   ], []);
 
   const keyRouteMap = useMemo(() => {

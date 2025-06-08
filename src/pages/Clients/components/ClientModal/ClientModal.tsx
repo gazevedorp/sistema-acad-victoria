@@ -18,9 +18,9 @@ import MatriculaForm from "../MatriculaForm/MatriculaForm";
 interface ClientModalProps extends BaseModalProps {
   initialData?: Partial<DadosCadastraisFormData>;
   alunoIdToEdit?: string;
-  onSaveComplete?: (
+  onSaveComplete?: ( // This is the main onSaveComplete from Clients.tsx
     error: any | null,
-    savedData?: DadosCadastraisFormData,
+    savedData?: any, // Use 'any' to accommodate different save data types or make more generic
     mode?: ModalMode
   ) => void;
 }
@@ -31,7 +31,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
   onClose,
   initialData,
   alunoIdToEdit,
-  onSaveComplete,
+  onSaveComplete, // Main onSaveComplete
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const isEditMode = mode === ModalMode.EDIT;
@@ -72,7 +72,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
     setValue,
     reset,
   } = useForm<DadosCadastraisFormData>({
-    //@ts-expect-error
+    //@ts-expect-error yupResolver type issue with this version or setup
     resolver: yupResolver(dadosCadastraisSchema),
     defaultValues: defaultFormValues,
   });
@@ -105,6 +105,16 @@ const ClientModal: React.FC<ClientModalProps> = ({
       reset(dataToReset as DadosCadastraisFormData);
     }
   }, [initialData, mode, reset, defaultFormValues, open]);
+
+  useEffect(() => {
+    if (open) {
+      if (isEditMode && initialData?.nome) {
+        setAlunoNome(initialData.nome);
+      } else if (mode === ModalMode.CREATE) {
+        setAlunoNome(""); // Reset alunoNome when modal opens in CREATE mode
+      }
+    }
+  }, [isEditMode, initialData, mode, open]); // Dependencies for alunoNome logic
 
   const mask = useMemo(() => new MaskPattern(), []);
 
@@ -201,16 +211,17 @@ const ClientModal: React.FC<ClientModalProps> = ({
       if (mode === ModalMode.CREATE) {
         const { data: newAluno, error } = await supabase
           .from("alunos")
-          .insert([cleanedDataSubmit as DadosCadastraisFormData]) // Cast para o tipo completo aqui
+          .insert([cleanedDataSubmit as DadosCadastraisFormData])
           .select()
           .single();
 
         if (error) throw error;
         resultData = newAluno as DadosCadastraisFormData;
+        if (resultData && resultData.nome) { // Set alunoNome after successful creation
+          setAlunoNome(resultData.nome);
+        }
       } else if (mode === ModalMode.EDIT && alunoIdToEdit) {
         const dataToUpdate = { ...cleanedDataSubmit };
-        // delete dataToUpdate.cpf; // Removido para permitir atualização de CPF se necessário (raro)
-
         const { data: updatedAluno, error } = await supabase
           .from("alunos")
           .update(dataToUpdate)
@@ -221,25 +232,25 @@ const ClientModal: React.FC<ClientModalProps> = ({
         if (error) throw error;
         resultData = updatedAluno as DadosCadastraisFormData;
       }
-      onSaveComplete?.(null, resultData, mode);
-      onClose();
+      // For DadosCadastrais, call onSaveComplete with DadosCadastraisFormData
+      if (onSaveComplete) {
+        onSaveComplete(null, resultData, mode);
+      }
+      onClose(); // Close modal after successful save of DadosCadastrais
     } catch (error: any) {
       console.error("Erro Supabase:", error.message || error);
-      onSaveComplete?.(
-        error,
-        cleanedDataSubmit as DadosCadastraisFormData,
-        mode
-      );
+      if (onSaveComplete) {
+        onSaveComplete(
+          error,
+          cleanedDataSubmit as DadosCadastraisFormData,
+          mode
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    if (isEditMode) {
-      setAlunoNome(initialData?.nome || "");
-    }
-  }, []);
 
   if (!open) return null;
 
@@ -257,7 +268,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
 
         <Styles.ModalBody>
           {modalType === "dados_cadastrais" ? (
-            //@ts-expect-error
             <Styles.Form onSubmit={handleSubmit(onSubmit)}>
               <Styles.FormGroup>
                 <Styles.Label htmlFor="nome">Nome Completo</Styles.Label>
@@ -559,7 +569,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
               {!isViewMode && (
                 <Styles.SubmitButtonContainer>
                   <Styles.SubmitButton
-                    disabled={mode !== ModalMode.EDIT}
+                    disabled={mode !== ModalMode.EDIT} // Only enable Matricula if editing an existing client
                     onClick={() => setmodalType("matricula")}
                     type="button"
                     style={{
@@ -582,11 +592,10 @@ const ClientModal: React.FC<ClientModalProps> = ({
             </Styles.Form>
           ) : (
             <MatriculaForm
-              //@ts-expect-error
-              mode={ModalMode}
-              //@ts-expect-error
-              alunoId={alunoIdToEdit}
+              mode={mode}
+              alunoId={alunoIdToEdit!}
               alunoName={alunoNome}
+              onSaveComplete={onSaveComplete as any}
               onNavigateBack={() => setmodalType("dados_cadastrais")}
             />
           )}
