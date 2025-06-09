@@ -412,10 +412,21 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       });
 
       if (itensParaSalvar.length > 0) {
+        console.log("Attempting to save matricula_detalhes:", JSON.stringify(itensParaSalvar, null, 2));
         const { error: itensError } = await supabase
           .from("matricula_detalhes")
           .insert(itensParaSalvar);
-        if (itensError) throw itensError;
+
+        if (itensError) {
+          console.error("Failed to save matricula_detalhes. Error details:", JSON.stringify(itensError, null, 2));
+          if (itensError.message.includes("violates foreign key constraint") && itensError.message.includes("id_modalidade")) {
+               throw new Error(`Falha ao salvar itens da matrícula: Um dos planos selecionados não possui uma modalidade associada corretamente. Detalhes: ${itensError.message}`);
+          }
+          throw itensError;
+        }
+        console.log("Matricula_detalhes saved successfully.");
+      } else {
+        console.log("No matricula_detalhes to save.");
       }
 
       onSaveComplete(null, {

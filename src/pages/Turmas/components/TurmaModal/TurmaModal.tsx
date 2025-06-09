@@ -38,12 +38,14 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalidades, setModalidades] = useState<{ id: string; nome: string }[]>([]);
 
   const defaultFormValues: TurmaFormData = useMemo(
     () => ({
       nome: "",
       ativo: true,
-      ...(initialData || {}), // Directly spread initialData as fields match TurmaFormData
+      modalidade_id: null, // Default to null or undefined
+      ...(initialData || {}),
     }),
     [initialData]
   );
@@ -64,11 +66,40 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
     if (open) {
       const dataToReset =
         mode === ModalMode.CREATE
-          ? { nome: "", ativo: true }
+          ? { nome: "", ativo: true, modalidade_id: null }
           : { ...defaultFormValues, ...initialData };
       reset(dataToReset);
+
+      if (mode !== ModalMode.VIEW) {
+        fetchModalidades();
+      }
     }
   }, [initialData, mode, reset, defaultFormValues, open]);
+
+  const fetchModalidades = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("modalidades")
+        .select("id, nome")
+        .eq("ativo", true); // Fetch only active modalities
+      if (error) {
+        console.error("Error fetching modalities:", error);
+        setModalidades([]);
+        return;
+      }
+      setModalidades(data || []);
+    } catch (err) {
+      console.error("Unexpected error fetching modalities:", err);
+      setModalidades([]);
+    }
+  };
+
+  // useEffect to call fetchModalidades when the modal opens and is not in VIEW mode
+  useEffect(() => {
+    if (open && mode !== ModalMode.VIEW) {
+      fetchModalidades();
+    }
+  }, [open, mode]);
 
   const watchedAtivo = watch("ativo");
 
@@ -76,8 +107,11 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
     if (isViewMode) return;
     setIsSubmitting(true);
 
-    // Fields in TurmaFormData directly match Turma table structure (nome, ativo)
-    const dataToSave = { ...formData };
+    const dataToSave = {
+      nome: formData.nome,
+      ativo: formData.ativo,
+      modalidade_id: formData.modalidade_id || null, // Ensure null if undefined
+    };
 
     try {
       let savedResult: Turma | undefined;
@@ -135,6 +169,25 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
               />
               {errors.nome && (
                 <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <Styles.FormGroup style={{ marginTop: '10px' }}>
+              <Styles.Label htmlFor="modalidade_id">Modalidade</Styles.Label>
+              <Styles.Select
+                id="modalidade_id"
+                {...register("modalidade_id")} // Register with react-hook-form
+                disabled={isViewMode}
+              >
+                <option value="">Selecione uma modalidade</option>
+                {modalidades.map((modalidade) => (
+                  <option key={modalidade.id} value={modalidade.id}>
+                    {modalidade.nome}
+                  </option>
+                ))}
+              </Styles.Select>
+              {errors.modalidade_id && (
+                <Styles.ErrorMsg>{errors.modalidade_id.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
 

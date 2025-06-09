@@ -12,6 +12,11 @@ import { FiPlus } from "react-icons/fi";
 
 const columns: TableColumn<Turma>[] = [
   { field: "nome", header: "Nome" },
+  {
+    field: "modalidades", // Use the join alias if different, or the foreign key field name
+    header: "Modalidade",
+    customRender: (turma) => turma.modalidades?.nome || "N/A"
+  },
   { field: "ativo", header: "Status", formatter: "status" },
 ];
 
@@ -30,7 +35,7 @@ const Turmas: React.FC = () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from("turmas")
-      .select("*")
+      .select("*, modalidades(nome)") // Updated to fetch modality name
       .order("nome", { ascending: true });
     if (error) {
       toast.error("Erro ao buscar turmas.");
@@ -135,7 +140,7 @@ const Turmas: React.FC = () => {
           </Styles.Subtitle>
         </div>
         <Styles.CadastrarButton onClick={openCreateModal}>
-          <FiPlus /> Nova Turma
+          <FiPlus />
         </Styles.CadastrarButton>
       </Styles.Header>
 

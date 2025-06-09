@@ -134,7 +134,7 @@ const Produtos: React.FC = () => {
           <Styles.Subtitle>Cadastre e gerencie os Produtos</Styles.Subtitle>
         </div>
         <Styles.CadastrarButton onClick={openCreateModal}>
-          <FiPlus /> Novo Produto
+          <FiPlus />
         </Styles.CadastrarButton>
       </Styles.Header>
 

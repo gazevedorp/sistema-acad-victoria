@@ -38,14 +38,20 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modalidades, setModalidades] = useState<{ id: string; nome: string }[]>([]);
 
   const defaultFormValues: PlanoFormData = useMemo(
     () => ({
       nome: "",
-      valor_mensal: 0, // Default to 0 for number input
+      valor_mensal: 0,
       ativo: true,
+      modalidade_id: null, // Default to null or undefined
       // Map 'valor' from initialData to 'valor_mensal' for the form
-      ...(initialData ? { ...initialData, valor_mensal: initialData.valor } : {}),
+      ...(initialData ? {
+        ...initialData,
+        valor_mensal: initialData.valor,
+        modalidade_id: initialData.modalidade_id
+      } : {}),
     }),
     [initialData]
   );
@@ -66,15 +72,49 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
     if (open) {
       const dataToReset =
         mode === ModalMode.CREATE
-          ? { nome: "", valor_mensal: 0, ativo: true }
+          ? { nome: "", valor_mensal: 0, ativo: true, modalidade_id: null }
           : {
               ...defaultFormValues,
-              // Ensure initialData (with 'valor') is correctly mapped to form's 'valor_mensal'
-              ...(initialData ? { ...initialData, valor_mensal: initialData.valor } : {}),
+              ...(initialData ? {
+                ...initialData,
+                valor_mensal: initialData.valor,
+                modalidade_id: initialData.modalidade_id
+              } : {}),
             };
       reset(dataToReset);
+
+      if (mode !== ModalMode.VIEW) {
+        fetchModalidades();
+      }
     }
-  }, [initialData, mode, reset, defaultFormValues, open]);
+  }, [initialData, mode, reset, defaultFormValues, open]); // Removed fetchModalidades from here
+
+  const fetchModalidades = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("modalidades")
+        .select("id, nome")
+        .eq("ativo", true); // Fetch only active modalities
+      if (error) {
+        console.error("Error fetching modalidades:", error);
+        // Optionally, show a toast error
+        setModalidades([]);
+        return;
+      }
+      setModalidades(data || []);
+    } catch (err) {
+      console.error("Unexpected error fetching modalidades:", err);
+      setModalidades([]);
+    }
+  };
+
+  // useEffect to call fetchModalidades when the modal opens and is not in VIEW mode
+  useEffect(() => {
+    if (open && mode !== ModalMode.VIEW) {
+      fetchModalidades();
+    }
+  }, [open, mode]);
+
 
   const watchedAtivo = watch("ativo");
 
@@ -82,11 +122,11 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
     if (isViewMode) return;
     setIsSubmitting(true);
 
-    // Map form's valor_mensal back to valor for Supabase
     const dataToSave = {
       nome: formData.nome,
       valor: formData.valor_mensal,
       ativo: formData.ativo,
+      modalidade_id: formData.modalidade_id || null, // Ensure null if undefined
     };
 
     try {
@@ -166,6 +206,25 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
               />
               {errors.valor_mensal && (
                 <Styles.ErrorMsg>{errors.valor_mensal.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <Styles.FormGroup style={{ marginTop: '10px' }}>
+              <Styles.Label htmlFor="modalidade_id">Modalidade</Styles.Label>
+              <Styles.Select
+                id="modalidade_id"
+                {...register("modalidade_id")}
+                disabled={isViewMode}
+              >
+                <option value="">Selecione uma modalidade</option>
+                {modalidades.map((modalidade) => (
+                  <option key={modalidade.id} value={modalidade.id}>
+                    {modalidade.nome}
+                  </option>
+                ))}
+              </Styles.Select>
+              {errors.modalidade_id && (
+                <Styles.ErrorMsg>{errors.modalidade_id.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
 

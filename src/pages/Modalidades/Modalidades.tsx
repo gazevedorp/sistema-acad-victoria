@@ -134,7 +134,7 @@ const Modalidades: React.FC = () => {
           <Styles.Subtitle>Cadastre e gerencie suas modalidades</Styles.Subtitle>
         </div>
         <Styles.CadastrarButton onClick={openCreateModal}>
-          <FiPlus /> Nova Modalidade
+          <FiPlus />
         </Styles.CadastrarButton>
       </Styles.Header>
 

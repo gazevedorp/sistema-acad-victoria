@@ -12,7 +12,10 @@ import { FiPlus } from "react-icons/fi";
 
 const columns: TableColumn<Plano>[] = [
   { field: "nome", header: "Nome" },
-  { field: "valor", header: "Valor", formatter: "money" }, // Changed to 'valor'
+  { field: "modalidades", header: "Modalidade",
+    customRender: (plano) => plano.modalidades?.nome || "N/A"
+  },
+  { field: "valor", header: "Valor", formatter: "money" },
   { field: "ativo", header: "Status", formatter: "status" },
 ];
 
@@ -31,7 +34,7 @@ const Planos: React.FC = () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from("planos")
-      .select("*")
+      .select("*, modalidades(nome)") // Updated to fetch modality name
       .order("nome", { ascending: true });
     if (error) {
       toast.error("Erro ao buscar planos.");
@@ -134,7 +137,7 @@ const Planos: React.FC = () => {
           <Styles.Subtitle>Cadastre e gerencie os Planos</Styles.Subtitle>
         </div>
         <Styles.CadastrarButton onClick={openCreateModal}>
-          <FiPlus /> Novo Plano
+          <FiPlus />
         </Styles.CadastrarButton>
       </Styles.Header>
 

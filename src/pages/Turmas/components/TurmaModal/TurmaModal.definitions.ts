@@ -7,4 +7,5 @@ export enum ModalMode {
 export interface TurmaFormData {
   nome: string;
   ativo: boolean;
+  modalidade_id?: string | null;
 }

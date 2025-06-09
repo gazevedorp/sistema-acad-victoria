@@ -17,8 +17,8 @@ export type MaskPatternType = 'phone' | 'cpfCnpj' | 'cep';
 export interface PlanoFromSupabase {
   id: string;
   nome: string;
-  valor_mensal: number;
-  modalidade_id: string;
+  valor_mensal: number; // This is 'valor' in the 'planos' table, potentially aliased in the query
+  modalidade_id: string | null; // Corrected to allow null
 }
 
 export interface TurmaFromSupabase {
