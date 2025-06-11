@@ -6,15 +6,13 @@ export { COLORS }; // Re-export for use in Turmas.tsx if needed (e.g. for Loader
 export const PageContainer = styled.div`
   width: 100%;
   padding: 24px;
-  background-color: ${COLORS.backgroundLight};
+  background-color: ${COLORS.white};
   min-height: 100vh;
 `;
 
 export const HeaderContainer = styled.div`
-  padding: 12px 20px;
   background-color: ${COLORS.white};
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -62,7 +60,6 @@ export const AddButton = styled.button`
 export const SearchInputContainer = styled.div`
   margin-bottom: 20px;
   background-color: ${COLORS.white};
-  padding: 16px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.03);
 `;

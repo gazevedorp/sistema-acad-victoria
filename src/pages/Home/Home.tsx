@@ -103,15 +103,6 @@ const Home: React.FC = () => {
     }
   }, [supabase]); // supabase is a dependency of useCallback
 
-  // All Caixa related callbacks and useEffects MOVED to CashierSection:
-  // - checkUserAndActiveCaixaCallback
-  // - fetchCaixaMovimentacoesCallback
-  // - fetchDadosParaCaixaSelectsCallback
-  // - handleNovaMovimentacaoClick and modal close handlers
-  // - handleAbrirCaixa, handleSaveMovimentacao, generatePDFFechamentoCaixa, handleConfirmarFechamentoCaixa
-  // - adjustCaixaSearchString, filteredCaixaMovimentacoes, currentCaixaTableData
-  // - useEffects for loading user, caixa details, movimentacoes, select data
-
   // Callback for CashierSection to update Home's knowledge of active caixa
   const handleActiveCaixaUpdate = useCallback((updatedCaixa: CashierActiveCaixa | null) => {
     setHomeActiveCaixaDetails({ id: updatedCaixa?.id || null });
@@ -164,7 +155,6 @@ const Home: React.FC = () => {
         onActiveCaixaUpdate={handleActiveCaixaUpdate}
         onRequestSummaryRefresh={handleRequestSummaryRefresh}
       />
-      {/* All Modals (AbrirCaixaModal, CaixaModal, FecharCaixaModal) are now inside CashierSection */}
       <ToastContainer autoClose={3000} hideProgressBar/>
     </Styles.Container>
   );

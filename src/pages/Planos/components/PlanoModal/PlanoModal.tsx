@@ -187,7 +187,7 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
 
             {!isViewMode && (
               <Styles.SubmitButtonContainer>
-                <Styles.SubmitButton type="submit" disabled={isSubmitting || (!isDirty && mode === ModalMode.EDIT))}>
+                <Styles.SubmitButton type="submit" disabled={isSubmitting || (!isDirty && mode === ModalMode.EDIT)}>
                   {isSubmitting ? <Loader color={Styles.COLORS.white} size={20} /> : (mode === ModalMode.CREATE ? 'Cadastrar Plano' : 'Salvar Alterações')}
                 </Styles.SubmitButton>
               </Styles.SubmitButtonContainer>
