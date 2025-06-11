@@ -8,6 +8,7 @@ export const Container = styled.div`
 export const ControlsContainer = styled.div`
   display: flex;
   gap: 15px;
+  margin-top: 15px;
   margin-bottom: 20px;
   flex-wrap: wrap; // Allow wrapping on smaller screens
 

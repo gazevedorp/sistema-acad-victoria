@@ -48,10 +48,10 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
     { icon: <FiHome />, text: "Home [F1]", route: "/" },
     // { icon: <FiUser />, text: "Alunos [F2]", route: "/clients" },
     // { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
-    { icon: <FiArchive />, text: "Gerenciar Caixas", route: "/caixas" }, // Added new menu item
     { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
     { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
     { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
+    { icon: <FiArchive />, text: "Caixas", route: "/caixas" }, // Added new menu item
     // { icon: <FiBarChart2 />, text: "Relatorios [F7]", route: "/relatorios" },
   ], []);
 

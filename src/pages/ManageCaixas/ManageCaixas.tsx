@@ -44,8 +44,8 @@ const ManageCaixas: React.FC = () => {
         .from('caixas')
         .select(`
           id, usuario_id, valor_inicial, data_abertura, data_fechamento, status,
-          observacoes_abertura, obs_fechamento, valor_total_entradas, valor_total_saidas,
-          saldo_final_calculado, usuarios:usuario_id (email)
+          observacoes_abertura, observacoes_fechamento, valor_total_entradas, valor_total_saidas,
+          saldo_final_calculado
         `)
         .order('data_abertura', { ascending: false }) as { data: SupabaseCaixaResponse[] | null, error: any };
 
@@ -212,17 +212,14 @@ const ManageCaixas: React.FC = () => {
 
 
   const columns: TableColumn<CaixaWithUserEmail>[] = useMemo(() => [
-    { field: 'id', header: 'ID Caixa', render: (c) => <span title={c.id}>{c.id.substring(0, 8)}...</span> },
     { field: 'usuario_email', header: 'Usuário' },
-    { field: 'data_abertura', header: 'Abertura', formatter: (d) => formatDateTime(d) },
-    { field: 'data_fechamento', header: 'Fechamento', formatter: (d) => (d ? formatDateTime(d) : '-') },
-    { field: 'valor_inicial', header: 'Vl. Inicial', formatter: (v) => formatCurrency(v as number) },
-    { field: 'valor_total_entradas', header: 'Entradas', formatter: (v) => formatCurrency(v as number | null) },
-    { field: 'valor_total_saidas', header: 'Saídas', formatter: (v) => formatCurrency(v as number | null) },
-    { field: 'saldo_final_calculado', header: 'Saldo Final', formatter: (v) => formatCurrency(v as number | null) },
+    { field: 'data_abertura', header: 'Abertura', formatter: "date" },
+    { field: 'data_fechamento', header: 'Fechamento', formatter: "date" },
+    { field: 'valor_inicial', header: 'Vl. Inicial', formatter: "money" },
+    { field: 'valor_total_entradas', header: 'Entradas', formatter: "money" },
+    { field: 'valor_total_saidas', header: 'Saídas', formatter: "money" },
+    { field: 'saldo_final_calculado', header: 'Saldo Final', formatter: "money" },
     { field: 'status', header: 'Status' },
-    { field: 'observacoes_abertura', header: 'Obs. Abertura', render: (c) => <span title={c.observacoes_abertura || ''}>{(c.observacoes_abertura || '').substring(0,20)}...</span> },
-    { field: 'obs_fechamento', header: 'Obs. Fechamento', render: (c) => <span title={c.obs_fechamento || ''}>{(c.obs_fechamento || '').substring(0,20)}...</span> },
     {
       field: 'actions',
       header: 'Ações',
@@ -255,7 +252,6 @@ const ManageCaixas: React.FC = () => {
     <Styles.Container>
       <h1>Gerenciar Caixas</h1>
       <Styles.ControlsContainer>
-        <input type="text" placeholder="Pesquisar ID/Obs..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         <input type="text" placeholder="Pesquisar Usuário..." value={userFilter} onChange={(e) => setUserFilter(e.target.value)} />
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="todos">Todos Status</option>
