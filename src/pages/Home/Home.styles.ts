@@ -62,7 +62,7 @@ export const Card = styled.div`
   padding: 1.5rem; // Keep padding (24px)
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07),
     0 2px 4px -2px rgba(0, 0, 0, 0.07);
-  flex: 1 1 250px; // Grow, shrink, with a base width suggestion
+  flex: 1 1 200px; // Grow, shrink, with a base width suggestion
   min-width: 200px; // Prevent cards from becoming too narrow
   display: flex;
   flex-direction: column;
@@ -99,4 +99,98 @@ export const LoaderDiv = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+`;
+
+// New styles for sections
+export const Section = styled.div`
+  background-color: ${COLORS.white}; // White background for the section
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: ${props => props.border ? "1px solid #ccc" : "none"};
+`;
+
+export const SectionTitle = styled.h2`
+  font-size: 1.75rem; // Larger font size for section titles (e.g., 28px)
+  font-weight: 600; // Semi-bold
+  color: ${COLORS.textBody}; // Main text color
+  margin-bottom: 1rem; // Space below the title (16px)
+  border-bottom: 2px solid ${COLORS.primary}; // Accent border below title
+  padding-bottom: 0.5rem; // Padding below title text before border
+`;
+
+// Styles copied from Clients.styles.ts for Student Management
+export const CadastrarButton = styled.button`
+  color: #fff;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding-bottom: 10px;
+  align-self: flex-start;
+  background: #0d88cb;
+  &:hover {
+    background: #0898e6;
+  }
+`;
+
+export const Input = styled.input`
+  padding: 0.625rem 0.75rem; // 10px 12px
+  font-size: 0.875rem;
+  border: 1px solid #cbd5e0; // Tailwind gray-400 border
+  border-radius: 6px; // Slightly more rounded
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  width: 100%;
+  background-color: #fff;
+  color: #2d3748; // Tailwind gray-800
+
+  &:focus {
+    border-color: #8431dc;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(132, 49, 220, 0.25);
+  }
+
+  // Style readOnly inputs like disabled but allow focus/selection
+  &[readOnly] {
+    background-color: #f7fafc; // Tailwind gray-100
+    color: #718096; // Tailwind gray-600
+    // cursor: not-allowed; // Optional: remove if selection is desired
+    border-color: #e2e8f0; // Tailwind gray-300
+    &:focus {
+      // Keep focus style distinct
+      border-color: #8431dc;
+      box-shadow: 0 0 0 3px rgba(132, 49, 220, 0.25);
+    }
+  }
+
+  // Style number inputs - hide spinners on Chrome/Safari/Edge
+  &[type="number"]::-webkit-inner-spin-button,
+  &[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+`;
+
+// Styles copied from Caixa.styles.ts for Cashier Operations
+export const FecharCaixaButton = styled.button`
+  background-color: ${COLORS.danger}; // Ou uma cor diferente para fechamento
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: #c82333; // Tom mais escuro do danger
+  }
+  &:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;
+  }
 `;

@@ -45,8 +45,8 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
 
   const menuItems = useMemo(() => [
     { icon: <FiHome />, text: "Home [F1]", route: "/" },
-    { icon: <FiUser />, text: "Alunos [F2]", route: "/clients" },
-    { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
+    // { icon: <FiUser />, text: "Alunos [F2]", route: "/clients" },
+    // { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
     { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
     { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
     { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },

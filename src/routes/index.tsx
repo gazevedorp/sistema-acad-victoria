@@ -4,12 +4,12 @@ import Dashboard from "../layouts/Dashboard";
 import Home from "../pages/Home/Home";
 import { useAuthStore } from "../store/authStore";
 import Login from "../pages/Login/Login";
-import Clients from "../pages/Clients/Clients";
+// import Clients from "../pages/Clients/Clients";
 import Products from "../pages/Products/Products";
 import Turmas from "../pages/Turmas/Turmas";
 import Relatorios from "../pages/Relatorios/Relatorios";
 import Plans from "../pages/Planos/Planos";
-import Caixa from "../pages/Caixa/Caixa";
+// import Caixa from "../pages/Caixa/Caixa";
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -28,12 +28,12 @@ const AppRoutes: React.FC = () => {
           }
         >
           <Route index element={<Home />} />
-          <Route path="clients" element={<Clients />} />
+          {/* <Route path="clients" element={<Clients />} /> */}
           <Route path="products" element={<Products />} />
           <Route path="turmas" element={<Turmas />} />
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="planos" element={<Plans />} />
-          <Route path="caixa" element={<Caixa />} />
+          {/* <Route path="caixa" element={<Caixa />} /> */}
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
