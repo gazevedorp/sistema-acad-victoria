@@ -6,6 +6,7 @@ import { TurmaFormData, ModalidadeBasicInfo } from '../../../../types/TurmaTypes
 import { BaseTurmaModalProps, ModalMode, turmaSchema, defaultTurmaFormValues } from './TurmaModal.definitions';
 import * as Styles from './TurmaModal.styles';
 import Loader from '../../../../components/Loader/Loader'; // Assuming Loader path
+import { COLORS } from '../../Turmas.styles';
 
 const TurmaModal: React.FC<BaseTurmaModalProps> = ({
   open,
@@ -197,7 +198,7 @@ const TurmaModal: React.FC<BaseTurmaModalProps> = ({
             {!isViewMode && (
               <Styles.SubmitButtonContainer>
                 <Styles.SubmitButton type="submit" disabled={isSubmitting || (!isDirty && mode === ModalMode.EDIT)}>
-                  {isSubmitting ? <Loader color={Styles.COLORS.white} size={20} /> : (mode === ModalMode.CREATE ? 'Cadastrar Turma' : 'Salvar Alterações')}
+                  {isSubmitting ? <Loader color={COLORS.white} size={20} /> : (mode === ModalMode.CREATE ? 'Cadastrar Turma' : 'Salvar Alterações')}
                 </Styles.SubmitButton>
               </Styles.SubmitButtonContainer>
             )}
