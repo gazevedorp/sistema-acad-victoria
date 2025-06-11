@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import * as Styles from "./Home.styles";
+import { TopContentContainer, SummaryArea, CashierActionsArea } from "./Home.styles"; // Import new layout components
 import { supabase } from "../../lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { toast, ToastContainer } from "react-toastify";
@@ -143,18 +144,26 @@ const Home: React.FC = () => {
 
   return (
     <Styles.Container>
-      <SummarySection
-        clientsActiveSummary={clientsActiveSummary}
-        totalEntradasCaixaAberto={totalEntradasCaixaAberto}
-        totalSaidasCaixaAberto={totalSaidasCaixaAberto}
-        onSummaryLoading={onSummaryLoading}
-      />
+      <TopContentContainer>
+        <SummaryArea>
+          <SummarySection
+            clientsActiveSummary={clientsActiveSummary}
+            totalEntradasCaixaAberto={totalEntradasCaixaAberto}
+            totalSaidasCaixaAberto={totalSaidasCaixaAberto}
+            onSummaryLoading={onSummaryLoading}
+          />
+        </SummaryArea>
+        <CashierActionsArea>
+          <CashierSection
+            currentUser={currentUser}
+            onActiveCaixaUpdate={handleActiveCaixaUpdate}
+            onRequestSummaryRefresh={handleRequestSummaryRefresh}
+          />
+        </CashierActionsArea>
+      </TopContentContainer>
+
       <StudentsSection />
-      <CashierSection
-        currentUser={currentUser}
-        onActiveCaixaUpdate={handleActiveCaixaUpdate}
-        onRequestSummaryRefresh={handleRequestSummaryRefresh}
-      />
+
       <ToastContainer autoClose={3000} hideProgressBar/>
     </Styles.Container>
   );

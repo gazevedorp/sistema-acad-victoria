@@ -131,7 +131,7 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
           />
         </div>
         <Styles.CadastrarButton onClick={openCreateStudentModal}> {/* Assuming CadastrarButton style will be in StudentsSection.styles.ts */}
-          <FiPlus />
+          <FiPlus /> Cadastrar Aluno
         </Styles.CadastrarButton>
       </div>
       {isStudentsLoading ? (
