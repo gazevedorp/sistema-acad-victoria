@@ -113,7 +113,7 @@ export const Label = styled.label`
   margin-bottom: 2px;
 `;
 
-const baseInputStyles = \`
+const baseInputStyles = `
   padding: 8px 12px;
   font-size: 0.875rem;
   line-height: 1.4;
@@ -136,14 +136,14 @@ const baseInputStyles = \`
 
   &::placeholder { color: \${COLORS.textMuted}; opacity: 1; }
   &:disabled, &[readonly] { background-color: \${COLORS.backgroundDisabled}; opacity: 0.7; cursor: not-allowed; }
-\`;
+`;
 
-export const Input = styled.input\`
-  \${baseInputStyles}
-\`;
+export const Input = styled.input`
+  ${baseInputStyles}
+`;
 
 // Specific style for checkbox for better alignment and size control if needed
-export const CheckboxInput = styled.input.attrs({ type: 'checkbox' })\`
+export const CheckboxInput = styled.input.attrs({ type: 'checkbox' })`
   width: 1rem; // Example size
   height: 1rem; // Example size
   cursor: pointer;
@@ -153,18 +153,18 @@ export const CheckboxInput = styled.input.attrs({ type: 'checkbox' })\`
     outline: 0;
     box-shadow: 0 0 0 0.2rem ${COLORS.primaryLightFocus};
   }
-\`;
+`;
 
 
-export const SubmitButtonContainer = styled.div\`
+export const SubmitButtonContainer = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-top: 16px; // Adjusted margin
-\`;
+`;
 
-export const SubmitButton = styled.button\`
-  background-color: \${COLORS.primary};
-  color: \${COLORS.white};
+export const SubmitButton = styled.button`
+  background-color: ${COLORS.primary};
+  color: ${COLORS.white};
   font-size: 0.9rem;
   font-weight: 500;
   padding: 9px 20px;
@@ -175,13 +175,13 @@ export const SubmitButton = styled.button\`
   min-width: 140px; // Slightly smaller
   text-align: center;
 
-  &:hover { background-color: \${COLORS.primaryDarker}; }
-  &:focus { outline: 0; box-shadow: 0 0 0 0.2rem \${COLORS.primaryLightFocus}; }
-  &:disabled { background-color: \${COLORS.textMuted}; border-color: \${COLORS.textMuted}; cursor: not-allowed; opacity: 0.65; }
-\`;
+  &:hover { background-color: ${COLORS.primaryDarker}; }
+  &:focus { outline: 0; box-shadow: 0 0 0 0.2rem ${COLORS.primaryLightFocus}; }
+  &:disabled { background-color: ${COLORS.textMuted}; border-color: ${COLORS.textMuted}; cursor: not-allowed; opacity: 0.65; }
+`;
 
-export const ErrorMsg = styled.span\`
-  color: \${COLORS.danger};
+export const ErrorMsg = styled.span`
+  color: ${COLORS.danger};
   font-size: 0.75rem;
   margin-top: 2px; // Added small margin for spacing
-\`;
+`;
