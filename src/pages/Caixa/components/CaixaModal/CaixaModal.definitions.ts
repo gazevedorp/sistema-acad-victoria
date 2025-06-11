@@ -24,9 +24,9 @@ export interface FormaPagamentoParaSelect {
 }
 
 export interface CaixaModalFormData {
-  tipoMovimentacao: TipoMovimentacaoCaixa;
+  tipo: TipoMovimentacaoCaixa;
   valor: number;
-  forma_pagamento_id: string; // ID da forma de pagamento
+  forma_pagamento: string; // ID da forma de pagamento
   descricao?: string; // Obrigatório para saída, opcional para outros
 
   // Campos condicionais
@@ -36,7 +36,7 @@ export interface CaixaModalFormData {
 }
 
 export const caixaModalSchema = yup.object().shape({
-  tipoMovimentacao: yup
+  tipo: yup
     .string()
     .oneOf(Object.values(TipoMovimentacaoCaixa))
     .required("Tipo de movimentação é obrigatório"),
@@ -45,23 +45,23 @@ export const caixaModalSchema = yup.object().shape({
     .typeError("Valor deve ser um número")
     .positive("Valor deve ser positivo")
     .required("Valor é obrigatório"),
-  forma_pagamento_id: yup.string().required("Forma de pagamento é obrigatória"),
-  descricao: yup.string().when("tipoMovimentacao", {
+  forma_pagamento: yup.string().required("Forma de pagamento é obrigatória"),
+  descricao: yup.string().when("tipo", {
     is: TipoMovimentacaoCaixa.SAIDA_CAIXA,
     then: (schema) => schema.required("Descrição é obrigatória para saídas").min(5, "Descrição muito curta"),
     otherwise: (schema) => schema.optional().nullable(),
   }),
-  cliente_id: yup.string().when("tipoMovimentacao", {
+  cliente_id: yup.string().when("tipo", {
     is: TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE,
     then: (schema) => schema.required("Selecione o aluno"),
     otherwise: (schema) => schema.optional().nullable(),
   }),
-  produto_id: yup.string().when("tipoMovimentacao", {
+  produto_id: yup.string().when("tipo", {
     is: TipoMovimentacaoCaixa.VENDA_PRODUTO,
     then: (schema) => schema.required("Selecione o produto"),
     otherwise: (schema) => schema.optional().nullable(),
   }),
-  quantidade: yup.number().when("tipoMovimentacao", {
+  quantidade: yup.number().when("tipo", {
     is: TipoMovimentacaoCaixa.VENDA_PRODUTO,
     then: (schema) =>
       schema

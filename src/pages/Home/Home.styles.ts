@@ -103,14 +103,10 @@ export const LoaderDiv = styled.div`
 
 // New styles for sections
 export const Section = styled.div`
-  margin-top: 2rem; // Add some space above the section
-  margin-bottom: 2rem; // Add some space below the section
-  padding: 1.5rem; // Add some padding inside the section
   background-color: ${COLORS.white}; // White background for the section
-  border-radius: 8px; // Rounded corners
-  border: 1px solid ${COLORS.borderDefault}; // Default border
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07),
-    0 2px 4px -2px rgba(0, 0, 0, 0.07); // Subtle shadow
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: ${props => props.border ? "1px solid #ccc" : "none"};
 `;
 
 export const SectionTitle = styled.h2`

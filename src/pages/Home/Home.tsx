@@ -69,7 +69,7 @@ const studentTableColumns: TableColumn<Client>[] = [
 ];
 
 const financeTableColumns: TableColumn<FinanceiroItem>[] = [
-  { field: "created_at", header: "Data", formatter: "dateTime" },
+  { field: "created_at", header: "Data", formatter: "date" },
   { field: "tipo", header: "Tipo" },
   { field: "forma_pagamento", header: "Pagamento" },
   { field: "valor", header: "Valor", formatter: "money" },
@@ -260,6 +260,8 @@ const Home: React.FC = () => {
     if (!activeCaixaDetails || !currentUser || activeCaixaDetails.usuario_id !== currentUser.id) { toast.error("Caixa não ativo."); return; }
     setIsSubmittingCaixaAction(true);
     const p: any = { ...data, caixa_id: activeCaixaDetails.id, usuario_id_transacao: currentUser.id };
+        console.log(p)
+
     Object.keys(p).forEach(k => (p[k] === undefined || p[k] === "") && delete p[k]);
     const { error } = await supabase.from("financeiro").insert([p]);
     if (error) toast.error("Erro registro: " + error.message);
@@ -310,12 +312,12 @@ const Home: React.FC = () => {
         <Styles.LoaderDiv><Loader color="#000" /></Styles.LoaderDiv>
       ) : (
         <Styles.CardContainer>
-          <Styles.Card><Styles.CardNumber>{clientsActiveSummary.length}</Styles.CardNumber><Styles.CardLabel>Aluno(s) <br/>ativo(s)</Styles.CardLabel></Styles.Card>
-          <Styles.Card><Styles.CardNumber style={{color:Styles.COLORS.success}}>{totalEntradasCaixaAberto.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</Styles.CardNumber><Styles.CardLabel>Entradas<br/>(Caixa Aberto)</Styles.CardLabel></Styles.Card>
-          <Styles.Card><Styles.CardNumber style={{color:Styles.COLORS.danger}}>{totalSaidasCaixaAberto.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</Styles.CardNumber><Styles.CardLabel>Saídas<br/>(Caixa Aberto)</Styles.CardLabel></Styles.Card>
+          <Styles.Card><Styles.CardNumber>{clientsActiveSummary.length}</Styles.CardNumber><Styles.CardLabel>Aluno(s) Ativo(s)</Styles.CardLabel></Styles.Card>
+          <Styles.Card><Styles.CardNumber style={{color:Styles.COLORS.success}}>{totalEntradasCaixaAberto.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</Styles.CardNumber><Styles.CardLabel>Entradas (Caixa Aberto)</Styles.CardLabel></Styles.Card>
+          <Styles.Card><Styles.CardNumber style={{color:Styles.COLORS.danger}}>{totalSaidasCaixaAberto.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</Styles.CardNumber><Styles.CardLabel>Saídas (Caixa Aberto)</Styles.CardLabel></Styles.Card>
         </Styles.CardContainer>
       )}
-      <Styles.Section>
+      <Styles.Section border>
         <><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}><div style={{maxWidth:400,flexGrow:1,marginRight:'1rem'}}><Styles.Input value={studentSearchInput} onChange={(e)=>setStudentSearchInput(e.target.value)} placeholder="Pesquisar Aluno"/></div><Styles.CadastrarButton onClick={openCreateStudentModal}><FiPlus/></Styles.CadastrarButton></div>
         {isStudentsLoading?(<Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>):(<DefaultTable data={currentStudentTableData} columns={studentTableColumns} rowsPerPage={studentRowsPerPage} currentPage={studentCurrentPage} totalRows={filteredStudents.length} onPageChange={setStudentCurrentPage} onRowsPerPageChange={(r)=>{setStudentRowsPerPage(r);setStudentCurrentPage(1);}} showActions noDelete onView={openViewStudentModal} onEdit={openEditStudentModal}/>)}
         </>
