@@ -22,8 +22,7 @@ interface FinanceiroItem {
 }
 
 const financeTableColumns: TableColumn<FinanceiroItem>[] = [
-  { field: "created_at", header: "Data", formatter: "datetime" }, // Using datetime for more precision
-  { field: "tipo", header: "Tipo" },
+  { field: "created_at", header: "Data", formatter: "date" }, // Using datetime for more precision
   { field: "forma_pagamento", header: "Pagamento" },
   { field: "valor", header: "Valor", formatter: "money" },
   { field: "descricao", header: "Descrição" },

@@ -11,7 +11,7 @@ import autoTable from "jspdf-autotable";
 
 import Loader from "../../../../components/Loader/Loader";
 // DefaultTable and TableColumn imports removed
-import { FiPlus } from "react-icons/fi"; // For the "Nova Movimentacao" button
+import { FiDollarSign, FiList, FiPlus, FiStopCircle } from "react-icons/fi"; // For the "Nova Movimentacao" button
 
 import TransactionHistoryModal from '../TransactionHistoryModal/TransactionHistoryModal'; // Import the new modal
 import CaixaModal from "../../../Caixa/components/CaixaModal/CaixaModal";
@@ -333,13 +333,13 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
             </Styles.FecharCaixaButton>
           )}
           <Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData || isSubmittingCaixaAction}>
-            <FiPlus />
+            Nova Mov.
           </Styles.CadastrarButton>
           <Styles.HistoryButton
             onClick={() => setIsHistoryModalOpen(true)}
             disabled={!activeCaixaDetails || isSubmittingCaixaAction || isLoadingCaixaSelectData}
           >
-            Histórico de Transações
+            Histórico
           </Styles.HistoryButton>
         </ActionButtonsContainer>
       </div>

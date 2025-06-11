@@ -6,7 +6,10 @@ export const SectionContainer = styled.div<{ border?: boolean }>`
   background-color: ${COLORS.white};
   // padding-bottom: 1.5rem; /* Removed to avoid conflict with Home.tsx layout */
   // margin-bottom: 1.5rem; /* Removed to avoid conflict with Home.tsx layout */
-  // border-bottom: ${(props) => (props.border ? `1px solid ${COLORS.borderDefault}` : "none")}; /* Removed to avoid conflict with Home.tsx layout */
+  // border-bottom: ${(props) =>
+    props.border
+      ? `1px solid ${COLORS.borderDefault}`
+      : "none"}; /* Removed to avoid conflict with Home.tsx layout */
   /* Styles for internal layout can remain or be added here if necessary,
      e.g., padding for content within this container if not handled by child elements.
      For now, ensuring it fits well within CashierActionsArea. */
@@ -52,14 +55,19 @@ export const Input = styled.input`
 
 // CadastrarButton style (can be shared)
 export const CadastrarButton = styled.button`
-  color: ${COLORS.white};
+  background-color: ${COLORS.success}; // Using COLORS.primary as COLORS.info is not defined
+  color: white;
+  padding: 10px 15px;
   border: none;
-  padding: 12px; // Consider consistent padding/sizing for buttons
-  font-size: 14px;
   border-radius: 4px;
   cursor: pointer;
-  align-self: flex-start; // This might vary based on layout
-  background: #0d88cb; // Consider COLORS.primary or a specific button color
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center text if no icon */
+  gap: 5px;
+  transition: background-color 0.15s ease-in-out;
   &:hover {
     background: ${COLORS.primary};
   }
