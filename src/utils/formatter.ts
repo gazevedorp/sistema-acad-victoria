@@ -5,6 +5,7 @@ export type IMaskPatternType =
   | "numbers"
   | "letters"
   | "date"
+  | "dateTime"
   | "money"
   | "status";
 
@@ -75,7 +76,7 @@ export class MaskPattern {
     return this.maskPhone(value);
   };
 
-  private maskDate = (dbDate: string | Date | null | undefined): string => {
+  private maskDateInternal = (dbDate: string | Date | null | undefined, includeTime: boolean = false): string => {
     if (!dbDate) {
       return "-";
     }
@@ -83,27 +84,40 @@ export class MaskPattern {
     let dateObj: Date;
 
     if (typeof dbDate === "string") {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dbDate)) {
-        dateObj = new Date(dbDate + "T00:00:00Z");
-      } else {
-        dateObj = new Date(dbDate);
-      }
+      // Check if it's just a date string (YYYY-MM-DD) and append time to avoid UTC issues if needed.
+      // However, Supabase often returns full ISO strings, so direct parsing is usually fine.
+      dateObj = new Date(dbDate);
     } else if (dbDate instanceof Date) {
       dateObj = dbDate;
     } else {
-      return "";
+      return "-"; // Or some other placeholder for invalid input
     }
 
     if (isNaN(dateObj.getTime())) {
-      return "";
+      return "-"; // Invalid date
     }
 
-    const dia = String(dateObj.getUTCDate()).padStart(2, "0");
-    const mes = String(dateObj.getUTCMonth() + 1).padStart(2, "0"); // Meses são 0-indexados
-    const ano = dateObj.getUTCFullYear();
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0"); // Meses são 0-indexados
+    const year = dateObj.getFullYear();
 
-    return `${dia}/${mes}/${ano}`;
+    if (includeTime) {
+      const hours = String(dateObj.getHours()).padStart(2, "0");
+      const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+      const seconds = String(dateObj.getSeconds()).padStart(2, "0");
+      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    }
+
+    return `${day}/${month}/${year}`;
   };
+
+  public maskDate = (dbDate: string | Date | null | undefined): string => {
+    return this.maskDateInternal(dbDate, false);
+  }
+
+  public maskDateTime = (dbDate: string | Date | null | undefined): string => {
+    return this.maskDateInternal(dbDate, true);
+  }
 
   private maskOnlyLetters = (value: string) => {
     return value.replace(/[0-9!@#¨$%^&*)(+=._-]+/g, "");
@@ -113,11 +127,18 @@ export class MaskPattern {
     return value.replace(/\D/g, "").replace(/^(\d{5})(\d{3})+?$/, "$1-$2");
   };
 
-  private maskOnlyMoney = (value: string) => {
+  public maskMoney = (value: number | string | null | undefined): string => {
+    if (value === null || value === undefined || value === '') {
+      return "-";
+    }
+    const numValue = typeof value === 'string' ? parseFloat(value.replace(',', '.')) : value;
+    if (isNaN(numValue)) {
+        return "R$ -";
+    }
     return Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
-    }).format(Number(value));
+    }).format(numValue);
   };
 
   private maskBoolean = (value: string) => {
@@ -126,26 +147,47 @@ export class MaskPattern {
     return "Inativo";
   };
 
-  applyMask(value: string, type: IMaskPatternType): string {
+  applyMask(value: any, type: IMaskPatternType): string {
     switch (type) {
       case "cep":
-        return this.maskCEP(value);
+        return this.maskCEP(String(value));
       case "cpfCnpj":
-        return this.document(value);
+        return this.document(String(value));
       case "date":
-        return this.maskDate(value);
+        return this.maskDate(value); // value can be Date object or string
+      case "dateTime":
+        return this.maskDateTime(value); // value can be Date object or string
       case "phone":
-        return this.phone(value);
+        return this.phone(String(value));
       case "numbers":
-        return this.maskOnlyNumbers(value);
+        return this.maskOnlyNumbers(String(value));
       case "letters":
-        return this.maskOnlyLetters(value);
+        return this.maskOnlyLetters(String(value));
       case "money":
-        return this.maskOnlyMoney(value);
+        return this.maskMoney(value); // value can be number or string
       case "status":
-        return this.maskBoolean(value);
+        return this.maskBoolean(String(value));
       default:
         return "invalid type";
     }
   }
 }
+
+// Export standalone functions for easier import
+const instance = new MaskPattern();
+
+export const formatDateTime = (value: string | Date | null | undefined): string => {
+  return instance.maskDateTime(value);
+};
+
+export const formatDate = (value: string | Date | null | undefined): string => {
+  return instance.maskDate(value);
+};
+
+export const formatCurrency = (value: number | string | null | undefined): string => {
+  return instance.maskMoney(value);
+};
+
+export const applyMask = (value: any, type: IMaskPatternType): string => {
+  return instance.applyMask(value, type);
+};
