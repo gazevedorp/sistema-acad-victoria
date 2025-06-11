@@ -35,9 +35,73 @@ const Home: React.FC = () => {
   const fetchHomePageSummaryData = useCallback(async (userId?: string, caixaId?: string | null) => {
     setSummaryLoading(true);
     try {
-      const fetchActiveStudentsPromise = supabase.from("alunos").select("id, ativo").eq("ativo", true);
-    finally { setSummaryLoading(false); }
-  }, [supabase]); // Added supabase dependency
+      // Fetch active students
+      const fetchActiveStudentsPromise = supabase
+        .from("alunos")
+        .select("id, ativo")
+        .eq("ativo", true);
+
+      // Fetch financial data only if caixaId is present
+      let fetchFinanceiroPromise;
+      if (caixaId) {
+        fetchFinanceiroPromise = supabase
+          .from("financeiro")
+          .select("tipo, valor")
+          .eq("caixa_id", caixaId);
+      } else {
+        // Resolve with empty data if no caixaId, to maintain Promise.all structure
+        fetchFinanceiroPromise = Promise.resolve({ data: [], error: null });
+      }
+
+      const [activeStudentsRes, financeiroRes] = await Promise.all([
+        fetchActiveStudentsPromise,
+        fetchFinanceiroPromise,
+      ]);
+
+      if (activeStudentsRes.error) {
+        console.error("Erro ao buscar resumo de alunos ativos:", activeStudentsRes.error.message);
+        toast.error("Erro ao buscar resumo de alunos ativos.");
+        setClientsActiveSummary([]); // Clear or set to default on error
+      } else if (activeStudentsRes.data) {
+        setClientsActiveSummary(activeStudentsRes.data as { id: string; ativo: boolean }[]);
+      }
+
+      if (financeiroRes.error) {
+        console.error("Erro ao buscar resumo financeiro do caixa:", financeiroRes.error.message);
+        // Don't toast an error here if it's just because caixaId was null
+        if (caixaId) { // Only toast if there was an actual attempt to fetch with a caixaId
+            toast.error("Erro ao buscar resumo financeiro do caixa.");
+        }
+        setTotalEntradasCaixaAberto(0);
+        setTotalSaidasCaixaAberto(0);
+      } else if (financeiroRes.data && caixaId) { // Ensure caixaId was present for this logic
+        const movs = financeiroRes.data as MovimentacaoCaixaAtivoSummary[];
+        let ent = 0;
+        let sai = 0;
+        movs.forEach((m) => {
+          if (m.tipo === "pagamento" || m.tipo === "venda") {
+            ent += m.valor;
+          } else if (m.tipo === "saida") {
+            sai += m.valor;
+          }
+        });
+        setTotalEntradasCaixaAberto(ent);
+        setTotalSaidasCaixaAberto(sai);
+      } else {
+        // If no caixaId or no data, set totals to 0
+        setTotalEntradasCaixaAberto(0);
+        setTotalSaidasCaixaAberto(0);
+      }
+    } catch (err: any) {
+      console.error("Erro inesperado ao buscar dados para o sumário da home:", err);
+      toast.error("Erro inesperado ao buscar dados para o sumário.");
+      setClientsActiveSummary([]);
+      setTotalEntradasCaixaAberto(0);
+      setTotalSaidasCaixaAberto(0);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [supabase]); // supabase is a dependency of useCallback
 
   // All Caixa related callbacks and useEffects MOVED to CashierSection:
   // - checkUserAndActiveCaixaCallback
