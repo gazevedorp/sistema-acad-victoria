@@ -62,7 +62,7 @@ export const Card = styled.div`
   padding: 1.5rem; // Keep padding (24px)
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07),
     0 2px 4px -2px rgba(0, 0, 0, 0.07);
-  flex: 1 1 250px; // Grow, shrink, with a base width suggestion
+  flex: 1 1 200px; // Grow, shrink, with a base width suggestion
   min-width: 200px; // Prevent cards from becoming too narrow
   display: flex;
   flex-direction: column;

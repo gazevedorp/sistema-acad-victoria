@@ -306,8 +306,9 @@ const Home: React.FC = () => {
 
   return (
     <Styles.Container>
-      <Styles.Header><div><Styles.Title>Painel de Controle</Styles.Title><Styles.Subtitle>Bem-vindo à sua plataforma</Styles.Subtitle></div></Styles.Header>
-      {onSummaryLoading ? (<Styles.LoaderDiv><Loader color="#000" /></Styles.LoaderDiv>) : (
+      {onSummaryLoading ? (
+        <Styles.LoaderDiv><Loader color="#000" /></Styles.LoaderDiv>
+      ) : (
         <Styles.CardContainer>
           <Styles.Card><Styles.CardNumber>{clientsActiveSummary.length}</Styles.CardNumber><Styles.CardLabel>Aluno(s) <br/>ativo(s)</Styles.CardLabel></Styles.Card>
           <Styles.Card><Styles.CardNumber style={{color:Styles.COLORS.success}}>{totalEntradasCaixaAberto.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</Styles.CardNumber><Styles.CardLabel>Entradas<br/>(Caixa Aberto)</Styles.CardLabel></Styles.Card>
@@ -315,13 +316,27 @@ const Home: React.FC = () => {
         </Styles.CardContainer>
       )}
       <Styles.Section>
-        <Styles.SectionTitle>Gerenciamento de Alunos</Styles.SectionTitle>
-        <><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}><div style={{maxWidth:400,flexGrow:1,marginRight:'1rem'}}><Styles.Input value={studentSearchInput} onChange={(e)=>setStudentSearchInput(e.target.value)} placeholder="Pesquisar Aluno"/></div><Styles.CadastrarButton onClick={openCreateStudentModal}><FiPlus/> Cadastrar Aluno</Styles.CadastrarButton></div>
-        {isStudentsLoading?(<Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>):(<DefaultTable data={currentStudentTableData} columns={studentTableColumns} rowsPerPage={studentRowsPerPage} currentPage={studentCurrentPage} totalRows={filteredStudents.length} onPageChange={setStudentCurrentPage} onRowsPerPageChange={(r)=>{setStudentRowsPerPage(r);setStudentCurrentPage(1);}} showActions noDelete onView={openViewStudentModal} onEdit={openEditStudentModal}/>)}</>
+        <><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}><div style={{maxWidth:400,flexGrow:1,marginRight:'1rem'}}><Styles.Input value={studentSearchInput} onChange={(e)=>setStudentSearchInput(e.target.value)} placeholder="Pesquisar Aluno"/></div><Styles.CadastrarButton onClick={openCreateStudentModal}><FiPlus/></Styles.CadastrarButton></div>
+        {isStudentsLoading?(<Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>):(<DefaultTable data={currentStudentTableData} columns={studentTableColumns} rowsPerPage={studentRowsPerPage} currentPage={studentCurrentPage} totalRows={filteredStudents.length} onPageChange={setStudentCurrentPage} onRowsPerPageChange={(r)=>{setStudentRowsPerPage(r);setStudentCurrentPage(1);}} showActions noDelete onView={openViewStudentModal} onEdit={openEditStudentModal}/>)}
+        </>
       </Styles.Section>
       <Styles.Section>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1rem'}}><div><Styles.SectionTitle style={{marginBottom:'0.5rem',borderBottom:'none',paddingBottom:0}}>Operações de Caixa</Styles.SectionTitle><Styles.Subtitle>{activeCaixaDetails?`Caixa Aberto (ID: ${activeCaixaDetails.id.substring(0,6)}... VI: ${Number(activeCaixaDetails.valor_inicial||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})})`:"Nenhum caixa aberto."}</Styles.Subtitle></div><div style={{display:"flex",gap:"10px",marginTop:'5px'}}>{activeCaixaDetails&&currentUser&&activeCaixaDetails.usuario_id===currentUser.id&&(<Styles.FecharCaixaButton onClick={handleAbrirModalFechamento} disabled={isSubmittingCaixaAction||isLoadingCaixaSelectData}>Fechar Caixa</Styles.FecharCaixaButton>)}<Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData||!currentUser||isSubmittingCaixaAction}><FiPlus/> Nova Movimentação</Styles.CadastrarButton></div></div>
-        {isCaixaLoading?(<Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>):(<><div style={{maxWidth:400,marginBottom:'20px',marginTop:'1rem'}}><Styles.Input value={caixaInputSearch} onChange={(e)=>setCaixaInputSearch(e.target.value)} placeholder="Pesquisar movimentação..."/></div><DefaultTable data={currentCaixaTableData} columns={financeTableColumns} rowsPerPage={caixaRowsPerPage} currentPage={caixaCurrentPage} totalRows={filteredCaixaMovimentacoes.length} onPageChange={setCaixaCurrentPage} onRowsPerPageChange={(r)=>{setCaixaRowsPerPage(r);setCaixaCurrentPage(1);}}/></>)}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+          <div style={{maxWidth:400,flexGrow:1,marginRight:'1rem'}}>
+            <Styles.Input value={caixaInputSearch} onChange={(e)=>setCaixaInputSearch(e.target.value)} placeholder="Pesquisar Movimentação"/>
+          </div>
+          <div style={{display:"flex",gap:"10px"}}>
+            {activeCaixaDetails&&currentUser&&activeCaixaDetails.usuario_id===currentUser.id&&(
+              <Styles.FecharCaixaButton onClick={handleAbrirModalFechamento} disabled={isSubmittingCaixaAction||isLoadingCaixaSelectData}>Fechar Caixa</Styles.FecharCaixaButton>
+            )}
+            <Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData||!currentUser||isSubmittingCaixaAction}>
+              <FiPlus/>
+            </Styles.CadastrarButton>
+          </div>
+        </div>
+        {isCaixaLoading?(<Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>):(
+          <DefaultTable data={currentCaixaTableData} columns={financeTableColumns} rowsPerPage={caixaRowsPerPage} currentPage={caixaCurrentPage} totalRows={filteredCaixaMovimentacoes.length} onPageChange={setCaixaCurrentPage} onRowsPerPageChange={(r)=>{setCaixaRowsPerPage(r);setCaixaCurrentPage(1);}}/>
+        )}
       </Styles.Section>
       {isClientModalOpen&&(<ClientModal open={isClientModalOpen} mode={clientModalMode} initialData={getInitialStudentModalData()} alunoIdToEdit={clientModalMode===StudentModalMode.EDIT&&selectedClientState?selectedClientState.id:undefined} onClose={handleCloseStudentModal} onSaveComplete={handleStudentSaveComplete}/>)}
       {showAbrirCaixaModal&&currentUser&&(<AbrirCaixaModal open={showAbrirCaixaModal} onClose={handleCloseAbrirCaixaModal} onAbrirCaixa={handleAbrirCaixa} userName={currentUser.email||"Usuário"} isSubmitting={isSubmittingCaixaAction}/>)}
