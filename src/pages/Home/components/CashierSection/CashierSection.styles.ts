@@ -4,9 +4,16 @@ import { COLORS } from "../../../../styles/colors";
 // Container for the section
 export const SectionContainer = styled.div<{ border?: boolean }>`
   background-color: ${COLORS.white};
-  padding-bottom: 1.5rem;
-  margin-bottom: 1.5rem; // Standard margin, can be adjusted if it's the last section
-  border-bottom: ${(props) => (props.border ? `1px solid ${COLORS.borderDefault}` : "none")};
+  // padding-bottom: 1.5rem; /* Removed to avoid conflict with Home.tsx layout */
+  // margin-bottom: 1.5rem; /* Removed to avoid conflict with Home.tsx layout */
+  // border-bottom: ${(props) => (props.border ? `1px solid ${COLORS.borderDefault}` : "none")}; /* Removed to avoid conflict with Home.tsx layout */
+  /* Styles for internal layout can remain or be added here if necessary,
+     e.g., padding for content within this container if not handled by child elements.
+     For now, ensuring it fits well within CashierActionsArea. */
+  display: flex; /* Added to help manage internal layout, e.g., if ActionButtonsContainer needs specific alignment */
+  flex-direction: column; /* Ensure children stack vertically */
+  height: 100%; /* Attempt to fill CashierActionsArea, might need adjustment based on content */
+  justify-content: center; /* Center buttons if they don't fill height, adjust as needed */
 `;
 
 // Input style (can be shared from a global/common styles file if identical to StudentsSection)
@@ -80,6 +87,39 @@ export const FecharCaixaButton = styled.button`
 
   &:hover {
     background-color: #c82333; // Darker shade of danger
+  }
+  &:disabled {
+    background-color: ${COLORS.backgroundDisabled};
+    color: ${COLORS.textMuted};
+    cursor: not-allowed;
+  }
+`;
+
+// ActionButtonsContainer style
+export const ActionButtonsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+// HistoryButton style
+export const HistoryButton = styled.button`
+  background-color: ${COLORS.primary}; // Using COLORS.primary as COLORS.info is not defined
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center text if no icon */
+  gap: 5px;
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: ${COLORS.primaryDarker}; // Using COLORS.primaryDarker as COLORS.infoDarker is not defined
   }
   &:disabled {
     background-color: ${COLORS.backgroundDisabled};

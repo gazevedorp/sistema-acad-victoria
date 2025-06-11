@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import * as Styles from "./CashierSection.styles"; // Styles for this section
+import { ActionButtonsContainer, HistoryButton } from "./CashierSection.styles"; // Import the new container and button
 import { supabase } from "../../../../lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { toast } from "react-toastify";
@@ -9,9 +10,10 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 import Loader from "../../../../components/Loader/Loader";
-import DefaultTable, { TableColumn } from "../../../../components/Table/DefaultTable";
+// DefaultTable and TableColumn imports removed
 import { FiPlus } from "react-icons/fi"; // For the "Nova Movimentacao" button
 
+import TransactionHistoryModal from '../TransactionHistoryModal/TransactionHistoryModal'; // Import the new modal
 import CaixaModal from "../../../Caixa/components/CaixaModal/CaixaModal";
 import {
   CaixaModalFormData,
@@ -53,15 +55,6 @@ interface FinanceiroItem {
 }
 
 // --- CONSTANTS ---
-const financeTableColumns: TableColumn<FinanceiroItem>[] = [
-  { field: "created_at", header: "Data", formatter: "date" },
-  { field: "tipo", header: "Tipo" },
-  { field: "forma_pagamento", header: "Pagamento" },
-  { field: "valor", header: "Valor", formatter: "money" },
-  { field: "descricao", header: "Descrição" },
-  { field: "cliente_nome", header: "Cliente" },
-  { field: "produto_nome", header: "Produto" },
-];
 
 const HARDCODED_FORMAS_PAGAMENTO: FormaPagamentoParaSelect[] = [
   { id: "dinheiro", nome: "Dinheiro" }, { id: "pix", nome: "PIX" },
@@ -69,10 +62,7 @@ const HARDCODED_FORMAS_PAGAMENTO: FormaPagamentoParaSelect[] = [
 ];
 
 // --- UTILITY FUNCTIONS ---
-const adjustCaixaSearchString = (text: string | null | undefined): string => {
-  if (!text) return "";
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-};
+// (No utility functions specific to the removed table elements remain here)
 
 // --- PROPS DEFINITION ---
 interface CashierSectionProps {
@@ -85,10 +75,7 @@ interface CashierSectionProps {
 const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCaixaUpdate, onRequestSummaryRefresh }) => {
   const [activeCaixaDetails, setActiveCaixaDetails] = useState<ActiveCaixa | null>(null);
   const [caixaMovimentacoes, setCaixaMovimentacoes] = useState<FinanceiroItem[]>([]);
-  const [caixaRowsPerPage, setCaixaRowsPerPage] = useState<number>(10);
-  const [caixaCurrentPage, setCaixaCurrentPage] = useState<number>(1);
   const [isCaixaLoading, setIsCaixaLoading] = useState<boolean>(true); // Initial loading for caixa details and movs
-  const [caixaInputSearch, setCaixaInputSearch] = useState<string>("");
   const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
   const [showAbrirCaixaModal, setShowAbrirCaixaModal] = useState(false);
   const [showFecharCaixaModal, setShowFecharCaixaModal] = useState(false);
@@ -96,6 +83,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
   const [produtosListCaixa, setProdutosListCaixa] = useState<ProdutoParaSelect[]>([]);
   const [isLoadingCaixaSelectData, setIsLoadingCaixaSelectData] = useState(false);
   const [isSubmittingCaixaAction, setIsSubmittingCaixaAction] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false); // State for history modal
 
   const checkActiveCaixa = useCallback(async (user: User | null) => {
     if (!user) {
@@ -327,17 +315,6 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
     finally { setIsSubmittingCaixaAction(false); }
   };
 
-  const filteredCaixaMovimentacoes = caixaMovimentacoes.filter(i =>
-    (adjustCaixaSearchString(i.tipo).includes(adjustCaixaSearchString(caixaInputSearch)) ||
-     adjustCaixaSearchString(i.descricao).includes(adjustCaixaSearchString(caixaInputSearch)) ||
-     adjustCaixaSearchString(i.cliente_nome).includes(adjustCaixaSearchString(caixaInputSearch)) ||
-     adjustCaixaSearchString(i.produto_nome).includes(adjustCaixaSearchString(caixaInputSearch)))
-  );
-  const currentCaixaTableData = filteredCaixaMovimentacoes.slice(
-    (caixaCurrentPage - 1) * caixaRowsPerPage,
-    ((caixaCurrentPage - 1) * caixaRowsPerPage) + caixaRowsPerPage
-  );
-
   if (!currentUser) { // Early return or placeholder if no user is logged in
     return <Styles.SectionContainer>Por favor, faça login para acessar o caixa.</Styles.SectionContainer>;
   }
@@ -345,10 +322,11 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
   return (
     <Styles.SectionContainer>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-        <div style={{maxWidth:400,flexGrow:1,marginRight:'1rem'}}>
-          <Styles.Input value={caixaInputSearch} onChange={(e)=>setCaixaInputSearch(e.target.value)} placeholder="Pesquisar Movimentação"/>
+        {/* Search Input div removed */}
+        <div style={{flexGrow:1}}> {/* This div can be removed if ActionButtonsContainer will fill width or be positioned differently later */}
+          {/* Placeholder for potential future content or remove if layout is handled by parent/ActionButtonsContainer exclusively */}
         </div>
-        <div style={{display:"flex",gap:"10px"}}>
+        <ActionButtonsContainer>
           {activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id && (
             <Styles.FecharCaixaButton onClick={handleAbrirModalFechamento} disabled={isSubmittingCaixaAction || isLoadingCaixaSelectData}>
               Fechar Caixa
@@ -357,20 +335,18 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
           <Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData || isSubmittingCaixaAction}>
             <FiPlus />
           </Styles.CadastrarButton>
-        </div>
+          <Styles.HistoryButton
+            onClick={() => setIsHistoryModalOpen(true)}
+            disabled={!activeCaixaDetails || isSubmittingCaixaAction || isLoadingCaixaSelectData}
+          >
+            Histórico de Transações
+          </Styles.HistoryButton>
+        </ActionButtonsContainer>
       </div>
       {isCaixaLoading ? (
         <Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>
       ) : (
-        <DefaultTable
-          data={currentCaixaTableData}
-          columns={financeTableColumns}
-          rowsPerPage={caixaRowsPerPage}
-          currentPage={caixaCurrentPage}
-          totalRows={filteredCaixaMovimentacoes.length}
-          onPageChange={setCaixaCurrentPage}
-          onRowsPerPageChange={(r)=>{setCaixaRowsPerPage(r);setCaixaCurrentPage(1);}}
-        />
+        null // Table was here, now explicitly rendering nothing.
       )}
       {showAbrirCaixaModal && (
         <AbrirCaixaModal
@@ -400,6 +376,14 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
           onConfirmFechar={handleConfirmarFechamentoCaixa}
           caixaId={activeCaixaDetails.id}
           isSubmitting={isSubmittingCaixaAction}
+        />
+      )}
+      {activeCaixaDetails && ( // Conditionally render TransactionHistoryModal
+        <TransactionHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          currentUser={currentUser}
+          activeCaixaId={activeCaixaDetails.id}
         />
       )}
     </Styles.SectionContainer>
