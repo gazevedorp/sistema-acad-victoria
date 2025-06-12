@@ -15,6 +15,9 @@ import Users from "../pages/Users/Users"; // Added import for Users page
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+
+  const isAdmin = user?.permissao === "admin";
 
   return (
     <BrowserRouter>
@@ -36,8 +39,9 @@ const AppRoutes: React.FC = () => {
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="planos" element={<Plans />} />
           {/* <Route path="caixa" element={<Caixa />} /> */}
-          <Route path="caixas" element={<ManageCaixas />} />
-          <Route path="users" element={<Users />} /> {/* Added route for Users */}
+          {isAdmin && <Route path="caixas" element={<ManageCaixas />} />}
+          {isAdmin && <Route path="users" element={<Users />} />}
+          {/* Added route for Users */}
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

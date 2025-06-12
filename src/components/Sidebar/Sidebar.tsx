@@ -11,7 +11,7 @@ import {
   FiFile,
   FiArchive,
 } from "react-icons/fi";
-import { FaUserFriends } from 'react-icons/fa';
+import { FaUserFriends } from "react-icons/fa";
 import { useAuthStore } from "../../store/authStore";
 
 const useIsMobile = () => {
@@ -38,20 +38,33 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const isMobile = useIsMobile();
   const location = useLocation();
 
   const effectiveMinimized = isMobile ? true : minimized;
+  const isAdmin = user?.permissao === "admin";
 
-  const menuItems = useMemo(() => [
-    { icon: <FiHome />, text: "Home", route: "/" },
-    { icon: <FiTable />, text: "Turmas", route: "/turmas" },
-    { icon: <FiFile />, text: "Planos", route: "/planos" },
-    { icon: <FiPackage />, text: "Produtos", route: "/products" },
-    { icon: <FaUserFriends />, text: "Usuários", route: "/users" }, // Added Users link
-    { icon: <FiArchive />, text: "Caixas", route: "/caixas" }, // Added new menu item
-    // { icon: <FiBarChart2 />, text: "Relatorios", route: "/relatorios" },
-  ], []);
+  const menuItems = useMemo(
+    () => [
+      { icon: <FiHome />, text: "Home", route: "/" },
+      { icon: <FiTable />, text: "Turmas", route: "/turmas" },
+      { icon: <FiFile />, text: "Planos", route: "/planos" },
+      { icon: <FiPackage />, text: "Produtos", route: "/products" },
+      isAdmin && {
+        icon: <FaUserFriends />,
+        text: "Usuários",
+        route: "/users",
+      }, // Added Users link
+      isAdmin && {
+        icon: <FiArchive />,
+        text: "Caixas",
+        route: "/caixas",
+      }, // Added new menu item
+      // { icon: <FiBarChart2 />, text: "Relatorios", route: "/relatorios" },
+    ],
+    []
+  );
 
   const handleLogout = useCallback(async () => {
     try {
@@ -96,9 +109,9 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
       <Styles.SidebarMenuItem
         minimized={effectiveMinimized}
         onClick={() => {
-            if (window.confirm("Tem certeza que deseja sair?")) {
-                handleLogout();
-            }
+          if (window.confirm("Tem certeza que deseja sair?")) {
+            handleLogout();
+          }
         }}
       >
         <Styles.IconWrapper minimized={effectiveMinimized}>
