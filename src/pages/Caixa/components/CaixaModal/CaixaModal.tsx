@@ -71,7 +71,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
   } = useForm<CaixaModalFormData>({
     resolver: yupResolver(caixaModalSchema),
     defaultValues: {
-      tipo: TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE,
+      tipo: TipoMovimentacaoCaixa.ENTRADA, // Changed
       valor: undefined,
       forma_pagamento: "",
       descricao: "",
@@ -88,13 +88,13 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      const defaultTipo = selectedTipoMovimentacao || TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE;
+      const defaultTipo = selectedTipoMovimentacao || TipoMovimentacaoCaixa.ENTRADA;
       reset({
         tipo: defaultTipo,
         valor: undefined,
         forma_pagamento: "",
         descricao: "",
-        cliente_id: defaultTipo === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE ? getValues("cliente_id") : undefined,
+        cliente_id: defaultTipo === TipoMovimentacaoCaixa.ENTRADA ? getValues("cliente_id") : undefined,
         produto_id: defaultTipo === TipoMovimentacaoCaixa.VENDA_PRODUTO ? getValues("produto_id") : undefined,
         quantidade: defaultTipo === TipoMovimentacaoCaixa.VENDA_PRODUTO ? getValues("quantidade") : undefined,
       });
@@ -108,7 +108,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
 
   // Efeito para buscar valor da mensalidade
   useEffect(() => {
-    if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE && selectedClienteId) {
+    if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.ENTRADA && selectedClienteId) {
       setIsValorReadOnly(true);
       setValue("valor", undefined); // Limpa valor enquanto busca
       fetchValorMensalidade(selectedClienteId).then(valorMensalidade => {
@@ -147,7 +147,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
     if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.SAIDA_CAIXA) {
       setIsValorReadOnly(false);
       // Não limpa o valor aqui, permite que o usuário digite
-    } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE || selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
+    } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.ENTRADA || selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       setIsValorReadOnly(true);
     }
   }, [selectedTipoMovimentacao]);
@@ -162,7 +162,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
       descricao: data.descricao || undefined,
     };
 
-    if (data.tipo === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE) {
+    if (data.tipo === TipoMovimentacaoCaixa.ENTRADA) {
       dataToSave.cliente_id = data.cliente_id;
     } else if (data.tipo === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       dataToSave.produto_id = data.produto_id;
@@ -192,8 +192,8 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
             <Styles.FormGroup>
               <Styles.Label htmlFor="tipo">Tipo de Movimentação</Styles.Label>
               <Styles.Select {...register("tipo")} id="tipo">
-                <option value={TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE}>
-                  Pagamento de Mensalidade
+                <option value={TipoMovimentacaoCaixa.ENTRADA}>
+                  Entrada // Changed text
                 </option>
                 <option value={TipoMovimentacaoCaixa.VENDA_PRODUTO}>
                   Venda de Produto
@@ -205,7 +205,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
               {errors.tipo && <Styles.ErrorMsg>{errors.tipo.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
 
-            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE && (
+            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.ENTRADA && (
               <Styles.FormGroup>
                 <Styles.Label htmlFor="cliente_id">Aluno</Styles.Label>
                 <Styles.Select {...register("cliente_id")} id="cliente_id">
@@ -275,7 +275,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
               {errors.forma_pagamento && <Styles.ErrorMsg>{errors.forma_pagamento.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
             
-            {(selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE || 
+            {(selectedTipoMovimentacao === TipoMovimentacaoCaixa.ENTRADA ||
               selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) && 
               !errors.descricao && // Não mostra se já há erro de descrição obrigatória (saída)
               (
