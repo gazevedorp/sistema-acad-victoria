@@ -71,7 +71,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
   } = useForm<CaixaModalFormData>({
     resolver: yupResolver(caixaModalSchema),
     defaultValues: {
-      tipo: TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE,
+      tipo: TipoMovimentacaoCaixa.ENTRADA, // Changed
       valor: undefined,
       forma_pagamento: "",
       descricao: "",
@@ -88,13 +88,13 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      const defaultTipo = selectedTipoMovimentacao || TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE;
+      const defaultTipo = selectedTipoMovimentacao || TipoMovimentacaoCaixa.ENTRADA;
       reset({
         tipo: defaultTipo,
         valor: undefined,
         forma_pagamento: "",
         descricao: "",
-        cliente_id: defaultTipo === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE ? getValues("cliente_id") : undefined,
+        cliente_id: defaultTipo === TipoMovimentacaoCaixa.ENTRADA ? getValues("cliente_id") : undefined,
         produto_id: defaultTipo === TipoMovimentacaoCaixa.VENDA_PRODUTO ? getValues("produto_id") : undefined,
         quantidade: defaultTipo === TipoMovimentacaoCaixa.VENDA_PRODUTO ? getValues("quantidade") : undefined,
       });
@@ -108,20 +108,12 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
 
   // Efeito para buscar valor da mensalidade
   useEffect(() => {
-    if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE && selectedClienteId) {
-      setIsValorReadOnly(true);
-      setValue("valor", undefined); // Limpa valor enquanto busca
-      fetchValorMensalidade(selectedClienteId).then(valorMensalidade => {
-        if (valorMensalidade !== undefined) {
-          setValue("valor", valorMensalidade, { shouldValidate: true });
-        }
-      });
-    } else if (selectedTipoMovimentacao !== TipoMovimentacaoCaixa.VENDA_PRODUTO) {
+    if (selectedTipoMovimentacao !== TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       // Se não for mensalidade nem venda, e não for saída, limpa o valor e torna editável (caso de mudança de tipo)
       // A condição para saída é tratada abaixo
-       if(selectedTipoMovimentacao !== TipoMovimentacaoCaixa.SAIDA_CAIXA){
-         setValue("valor", undefined);
-       }
+      if (selectedTipoMovimentacao !== TipoMovimentacaoCaixa.SAIDA_CAIXA) {
+        setValue("valor", undefined);
+      }
     }
   }, [selectedTipoMovimentacao, selectedClienteId, setValue]);
 
@@ -136,9 +128,9 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
         setValue("valor", undefined); // Limpa se o produto não tiver valor
       }
     } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
-        // Se for venda mas algum dado estiver faltando para o cálculo, limpa o valor
-        setValue("valor", undefined);
-        setIsValorReadOnly(true); // Ainda é calculado, então readonly
+      // Se for venda mas algum dado estiver faltando para o cálculo, limpa o valor
+      setValue("valor", undefined);
+      setIsValorReadOnly(true); // Ainda é calculado, então readonly
     }
   }, [selectedTipoMovimentacao, selectedProdutoId, watchedQuantidade, produtosList, setValue]);
 
@@ -147,7 +139,9 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
     if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.SAIDA_CAIXA) {
       setIsValorReadOnly(false);
       // Não limpa o valor aqui, permite que o usuário digite
-    } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE || selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
+    } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.ENTRADA) {
+      setIsValorReadOnly(false);
+    } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       setIsValorReadOnly(true);
     }
   }, [selectedTipoMovimentacao]);
@@ -162,13 +156,13 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
       descricao: data.descricao || undefined,
     };
 
-    if (data.tipo === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE) {
+    if (data.tipo === TipoMovimentacaoCaixa.ENTRADA) {
       dataToSave.cliente_id = data.cliente_id;
     } else if (data.tipo === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       dataToSave.produto_id = data.produto_id;
       // dataToSave.quantidade = data.quantidade; // Opcional salvar quantidade, se sua tabela 'financeiro' tiver
     }
-    
+
     try {
       await onSave(dataToSave);
     } catch (error) {
@@ -192,8 +186,8 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
             <Styles.FormGroup>
               <Styles.Label htmlFor="tipo">Tipo de Movimentação</Styles.Label>
               <Styles.Select {...register("tipo")} id="tipo">
-                <option value={TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE}>
-                  Pagamento de Mensalidade
+                <option value={TipoMovimentacaoCaixa.ENTRADA}>
+                  Entrada
                 </option>
                 <option value={TipoMovimentacaoCaixa.VENDA_PRODUTO}>
                   Venda de Produto
@@ -205,21 +199,6 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
               {errors.tipo && <Styles.ErrorMsg>{errors.tipo.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
 
-            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE && (
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="cliente_id">Aluno</Styles.Label>
-                <Styles.Select {...register("cliente_id")} id="cliente_id">
-                  <option value="">Selecione o Aluno</option>
-                  {alunosList.map((aluno) => (
-                    <option key={aluno.id} value={aluno.id}>
-                      {aluno.nome}
-                    </option>
-                  ))}
-                </Styles.Select>
-                {errors.cliente_id && <Styles.ErrorMsg>{errors.cliente_id.message}</Styles.ErrorMsg>}
-              </Styles.FormGroup>
-            )}
-
             {selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO && (
               <>
                 <Styles.FormGroup>
@@ -228,7 +207,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
                     <option value="">Selecione o Produto</option>
                     {produtosList.map((produto) => (
                       <option key={produto.id} value={produto.id}>
-                        {produto.nome} {produto.valor ? `- ${Number(produto.valor).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}` : ''}
+                        {produto.nome} {produto.valor ? `- ${Number(produto.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : ''}
                       </option>
                     ))}
                   </Styles.Select>
@@ -241,22 +220,30 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
                 </Styles.FormGroup>
               </>
             )}
-            
-            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.SAIDA_CAIXA && (
-                 <Styles.FormGroup>
-                    <Styles.Label htmlFor="descricao">Descrição da Saída</Styles.Label>
-                    <Styles.Textarea {...register("descricao")} id="descricao" rows={3} />
-                    {errors.descricao && <Styles.ErrorMsg>{errors.descricao.message}</Styles.ErrorMsg>}
-                </Styles.FormGroup>
-            )}
+
+            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.ENTRADA &&
+              (< Styles.FormGroup >
+                <Styles.Label htmlFor="descricao">Descrição da Entrada</Styles.Label>
+                <Styles.Textarea {...register("descricao")} id="descricao" rows={3} />
+                {errors.descricao && <Styles.ErrorMsg>{errors.descricao.message}</Styles.ErrorMsg>}
+              </Styles.FormGroup>
+              )}
+
+            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.SAIDA_CAIXA &&
+              (< Styles.FormGroup >
+                <Styles.Label htmlFor="descricao">Descrição da Saída</Styles.Label>
+                <Styles.Textarea {...register("descricao")} id="descricao" rows={3} />
+                {errors.descricao && <Styles.ErrorMsg>{errors.descricao.message}</Styles.ErrorMsg>}
+              </Styles.FormGroup>
+              )}
 
             <Styles.FormGroup>
               <Styles.Label htmlFor="valor">Valor (R$)</Styles.Label>
-              <Styles.Input 
-                type="number" 
-                step="0.01" 
-                {...register("valor")} 
-                id="valor" 
+              <Styles.Input
+                type="number"
+                step="0.01"
+                {...register("valor")}
+                id="valor"
                 readOnly={isValorReadOnly} // Campo readOnly condicionalmente
               />
               {errors.valor && <Styles.ErrorMsg>{errors.valor.message}</Styles.ErrorMsg>}
@@ -274,17 +261,16 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
               </Styles.Select>
               {errors.forma_pagamento && <Styles.ErrorMsg>{errors.forma_pagamento.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
-            
-            {(selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE || 
-              selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) && 
+
+            {selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO &&
               !errors.descricao && // Não mostra se já há erro de descrição obrigatória (saída)
               (
                 <Styles.FormGroup>
-                    <Styles.Label htmlFor="descricaoOpcional">Descrição (Opcional)</Styles.Label>
-                    <Styles.Textarea {...register("descricao")} id="descricaoOpcional" rows={2} />
-                    {/* Não mostra erro aqui, pois é opcional e o yup já trata para saída */}
+                  <Styles.Label htmlFor="descricaoOpcional">Descrição (Opcional)</Styles.Label>
+                  <Styles.Textarea {...register("descricao")} id="descricaoOpcional" rows={2} />
+                  {/* Não mostra erro aqui, pois é opcional e o yup já trata para saída */}
                 </Styles.FormGroup>
-            )}
+              )}
 
 
             <Styles.SubmitButtonContainer>
@@ -295,7 +281,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
           </Styles.Form>
         </Styles.ModalBody>
       </Styles.ModalContainer>
-    </Styles.ModalOverlay>
+    </Styles.ModalOverlay >
   );
 };
 

@@ -1,7 +1,7 @@
 import * as yup from "yup";
 
 export enum TipoMovimentacaoCaixa {
-  PAGAMENTO_MENSALIDADE = "pagamento",
+  ENTRADA = "entrada", // Changed from PAGAMENTO_MENSALIDADE = "pagamento"
   VENDA_PRODUTO = "venda",
   SAIDA_CAIXA = "saida",
 }
@@ -52,7 +52,7 @@ export const caixaModalSchema = yup.object().shape({
     otherwise: (schema) => schema.optional().nullable(),
   }),
   cliente_id: yup.string().when("tipo", {
-    is: TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE,
+    is: TipoMovimentacaoCaixa.ENTRADA, // Changed from PAGAMENTO_MENSALIDADE
     then: (schema) => schema.required("Selecione o aluno"),
     otherwise: (schema) => schema.optional().nullable(),
   }),
