@@ -8,4 +8,5 @@ export interface Client {
   cpf: string;
   rg: string;
   endereco: string;
+  paymentStatus?: string; // New field for financial status
 }

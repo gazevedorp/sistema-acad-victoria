@@ -9,6 +9,7 @@ import {
   studentPaymentModalSchema,
   FormaPagamentoParaSelect,
 } from "./StudentPaymentModal.definitions";
+import { FinanceiroMatricula } from "../../../../types/financeiro.types";
 
 interface StudentPaymentModalProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface StudentPaymentModalProps {
   student: { id: string; nome: string } | null;
   formasPagamentoList: FormaPagamentoParaSelect[];
   isSubmittingExt: boolean; // External submitting state
+  matriculaFinanceiraPendente?: FinanceiroMatricula | null; // New prop
 }
 
 const StudentPaymentModal: React.FC<StudentPaymentModalProps> = ({
@@ -26,12 +28,14 @@ const StudentPaymentModal: React.FC<StudentPaymentModalProps> = ({
   student,
   formasPagamentoList,
   isSubmittingExt,
+  matriculaFinanceiraPendente, // Destructure new prop
 }) => {
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue, // Added setValue
   } = useForm<StudentPaymentModalFormData>({
     resolver: yupResolver(studentPaymentModalSchema),
     defaultValues: {
@@ -43,13 +47,24 @@ const StudentPaymentModal: React.FC<StudentPaymentModalProps> = ({
 
   useEffect(() => {
     if (open) {
-      reset({
-        valor: undefined,
-        forma_pagamento: "",
-        descricao: undefined, // Changed from "" to undefined
-      });
+      if (matriculaFinanceiraPendente) {
+        reset({
+          valor: matriculaFinanceiraPendente.valor_total,
+          forma_pagamento: "", // Keep default or try to determine from context if needed
+          descricao: `Pagamento referente à matrícula - Venc: ${
+            new Date(matriculaFinanceiraPendente.vencimento + "T00:00:00Z") // Ensure correct date parsing
+              .toLocaleDateString("pt-BR", { timeZone: "UTC" }) // Display UTC date correctly
+          }`,
+        });
+      } else {
+        reset({
+          valor: undefined,
+          forma_pagamento: "",
+          descricao: undefined,
+        });
+      }
     }
-  }, [open, reset]);
+  }, [open, reset, matriculaFinanceiraPendente, setValue]); // Added setValue to dependencies, though not directly used in reset effect. Good practice if complex logic arises.
 
   const onSubmit: SubmitHandler<StudentPaymentModalFormData> = async (data) => {
     if (!student) return;
@@ -63,14 +78,29 @@ const StudentPaymentModal: React.FC<StudentPaymentModalProps> = ({
     <Styles.ModalOverlay>
       <Styles.ModalContainer>
         <Styles.ModalHeader>
-          <Styles.ModalTitle>Registrar Pagamento para: {student.nome}</Styles.ModalTitle>
+          <Styles.ModalTitle>
+            Registrar Pagamento para: {student.nome}
+            {matriculaFinanceiraPendente && (
+              <Styles.SubTitle>
+                Referente à pendência com vencimento em:{" "}
+                {new Date(matriculaFinanceiraPendente.vencimento + "T00:00:00Z")
+                  .toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+              </Styles.SubTitle>
+            )}
+          </Styles.ModalTitle>
           <Styles.CloseButton onClick={onClose}>×</Styles.CloseButton>
         </Styles.ModalHeader>
         <Styles.ModalBody>
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
               <Styles.Label htmlFor="valor">Valor (R$)</Styles.Label>
-              <Styles.Input type="number" step="0.01" {...register("valor")} id="valor" />
+              <Styles.Input
+                type="number"
+                step="0.01"
+                {...register("valor")}
+                id="valor"
+                readOnly={!!matriculaFinanceiraPendente} // Make readonly if there's a pending item
+              />
               {errors.valor && <Styles.ErrorMsg>{errors.valor.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
 

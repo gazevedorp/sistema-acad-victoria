@@ -150,7 +150,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
           const { data: matriculaData, error: matriculaError } = await supabase
             .from("matriculas")
             .select(
-              `id, data_matricula, dia_vencimento, status_matricula, observacoes, valor_cobrado_final, matricula_itens (plano_id, turma_id, valor_original_plano)`
+              `id, data_matricula, data_vencimento, status_matricula, observacoes, valor_cobrado_final, matricula_itens (plano_id, turma_id, valor_original_plano)` // Changed dia_vencimento to data_vencimento
             )
             .eq("aluno_id", alunoId)
             .eq("ativo_atual", true)
@@ -167,13 +167,31 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
               })
             );
 
+            let diaVencimentoCalculado = getDefaultMatriculaValues().diaVencimento;
+            if (matriculaData.data_vencimento) {
+              // data_vencimento is YYYY-MM-DD. We need the day.
+              // Supabase returns date strings that can be directly used to construct a Date object.
+              // Ensure parsing is robust. Adding 'T00:00:00Z' makes it explicit UTC.
+              try {
+                const dateObj = new Date(matriculaData.data_vencimento + 'T00:00:00Z');
+                if (!isNaN(dateObj.getTime())) { // Check if dateObj is valid
+                  diaVencimentoCalculado = dateObj.getUTCDate();
+                } else {
+                  console.warn("MatriculaForm: Invalid data_vencimento received", matriculaData.data_vencimento);
+                  // Fallback to default if parsing fails, though ideally this shouldn't happen with DB data
+                }
+              } catch (e) {
+                  console.error("MatriculaForm: Error parsing data_vencimento", e);
+                  // Fallback to default on error
+              }
+            }
+
+
             const formData: MatriculaFormData = {
               dataMatricula:
                 matriculaData.data_matricula ||
                 getDefaultMatriculaValues().dataMatricula,
-              diaVencimento:
-                matriculaData.dia_vencimento ??
-                getDefaultMatriculaValues().diaVencimento,
+              diaVencimento: diaVencimentoCalculado,
               statusMatricula:
                 (matriculaData.status_matricula as MatriculaFormData["statusMatricula"]) ||
                 "ativa",
@@ -418,11 +436,45 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
         if (itensError) throw itensError;
       }
 
+      // Create initial record in financeiro_matricula
+      if (currentMatriculaId) {
+        const financeiroMatriculaPayload = {
+          id_matricula: currentMatriculaId,
+          id_aluno: alunoId, // prop
+          vencimento: dataVencimentoFormatada, // from matriculaPrincipalPayload context
+          valor_total: calculatedValorCobrado, // from state, used in matriculaPrincipalPayload
+          pago: false,
+          id_caixa: null, // Explicitly null, not tied to an open cashier session
+        };
+
+        const { error: financeiroError } = await supabase
+          .from('financeiro_matricula')
+          .insert([financeiroMatriculaPayload]);
+
+        if (financeiroError) {
+          // Log the error, but proceed with onSaveComplete for the main matricula.
+          // The calling component/page can decide if this is a critical failure.
+          // For now, we allow matricula to be saved even if financial record fails,
+          // as this might be a recoverable situation or handled by other processes.
+          console.error(
+            "Erro ao criar registro financeiro inicial da matrícula:",
+            financeiroError
+          );
+          // Optionally, you could pass this error information along:
+          // onSaveComplete({ ...error, financeiroError }, formData);
+          // For now, we stick to the original error handling for onSaveComplete.
+        } else {
+          console.log("Registro financeiro inicial da matrícula criado com sucesso.", financeiroMatriculaPayload);
+        }
+      } else {
+        console.warn("currentMatriculaId não definido, não foi possível criar o registro financeiro inicial.");
+      }
+
       onSaveComplete(null, {
         ...formData,
       });
     } catch (error: any) {
-      console.error("Erro ao salvar matrícula no Supabase:", error);
+      console.error("Erro ao salvar matrícula ou registro financeiro no Supabase:", error);
       onSaveComplete(error, undefined);
     } finally {
       setIsSubmitting(false);
