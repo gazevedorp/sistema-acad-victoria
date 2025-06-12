@@ -119,6 +119,23 @@ const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = ({
     ((currentPage - 1) * rowsPerPage) + rowsPerPage
   );
 
+  // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+
+      if (event.key === "Escape") {
+        if (isOpen) {
+          event.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) {
     return null;
   }
@@ -136,9 +153,9 @@ const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = ({
               type="text"
               placeholder="Pesquisar..."
               value={searchTerm}
-              onChange={(e) => {setSearchTerm(e.target.value); setCurrentPage(1);}}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             />
-            <Styles.Select value={filterType} onChange={(e) => {setFilterType(e.target.value); setCurrentPage(1);}}>
+            <Styles.Select value={filterType} onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}>
               <option value="todos">Todos os Tipos</option>
               <option value="pagamento">Pagamento</option>
               <option value="venda">Venda</option>
