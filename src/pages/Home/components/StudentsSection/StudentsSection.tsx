@@ -120,10 +120,32 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
     (studentCurrentPage - 1) * studentRowsPerPage + studentRowsPerPage
   );
 
+    // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // F4: Cadastrar Novo Aluno
+      if (event.key === "F4") {
+        event.preventDefault();
+        openCreateStudentModal();
+      }
+      // Escape: Fechar Modal de Aluno
+      else if (event.key === "Escape") {
+        if (isClientModalOpen) {
+          event.preventDefault();
+          handleCloseStudentModal();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openCreateStudentModal, isClientModalOpen, handleCloseStudentModal]);
+
   return (
     <Styles.SectionContainer border> {/* Using a generic SectionContainer, or could be Styles.Section from Home.styles if kept there */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <div style={{ maxWidth: 400, flexGrow: 1, marginRight: "1rem" }}>
+        <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
           <Styles.Input // Assuming Input style will be in StudentsSection.styles.ts
             value={studentSearchInput}
             onChange={(e) => setStudentSearchInput(e.target.value)}
@@ -131,7 +153,7 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
           />
         </div>
         <Styles.CadastrarButton onClick={openCreateStudentModal}> {/* Assuming CadastrarButton style will be in StudentsSection.styles.ts */}
-          <FiPlus /> Cadastrar Aluno
+          Cadastrar Aluno [F4]
         </Styles.CadastrarButton>
       </div>
       {isStudentsLoading ? (

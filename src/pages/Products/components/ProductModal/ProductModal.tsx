@@ -3,7 +3,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as S from './ProductModal.styles';
 import { ProductModalFormData, productModalSchema } from './ProductModal.definitions';
-import { Product } from '../../types/ProductType'; // Assuming ProductType.ts is in src/types
+import { Product } from '../../../../types/ProductType'; // Assuming ProductType.ts is in src/types
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -51,6 +51,23 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSave, pr
     };
     await onSave(productToSave);
   };
+
+  // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+
+      if (event.key === "Escape") {
+        if (isOpen) {
+          event.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

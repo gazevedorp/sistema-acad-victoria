@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import * as Styles from "./CashierSection.styles"; // Styles for this section
-import { ActionButtonsContainer, HistoryButton } from "./CashierSection.styles"; // Import the new container and button
+import { ActionButtonsContainer } from "./CashierSection.styles"; // Import the new container and button
 import { supabase } from "../../../../lib/supabase";
 import { User } from "@supabase/supabase-js";
 import { toast } from "react-toastify";
@@ -8,10 +8,6 @@ import "react-toastify/dist/ReactToastify.css";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-import Loader from "../../../../components/Loader/Loader";
-// DefaultTable and TableColumn imports removed
-import { FiDollarSign, FiList, FiPlus, FiStopCircle } from "react-icons/fi"; // For the "Nova Movimentacao" button
 
 import TransactionHistoryModal from '../TransactionHistoryModal/TransactionHistoryModal'; // Import the new modal
 import CaixaModal from "../../../Caixa/components/CaixaModal/CaixaModal";
@@ -168,10 +164,9 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
 
   useEffect(() => {
     if (currentUser && (isFinanceModalOpen || showAbrirCaixaModal)) { // Fetch data when user is present and a modal that needs it is opening
-        fetchDadosParaCaixaSelects();
+      fetchDadosParaCaixaSelects();
     }
   }, [currentUser, isFinanceModalOpen, showAbrirCaixaModal, fetchDadosParaCaixaSelects]);
-
 
   const handleNovaMovimentacaoClick = () => {
     if (!currentUser) { toast.warn("Usuário não autenticado."); return; }
@@ -198,14 +193,14 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
         .select("id, usuario_id, valor_inicial, data_abertura, observacoes_abertura").single();
       if (error) throw error;
       if (nCaixa) {
-        const newActiveCaixa = { ...nCaixa, valor_inicial: Number(nCaixa.valor_inicial||0) };
+        const newActiveCaixa = { ...nCaixa, valor_inicial: Number(nCaixa.valor_inicial || 0) };
         setActiveCaixaDetails(newActiveCaixa);
         onActiveCaixaUpdate(newActiveCaixa); // Inform Home
         setShowAbrirCaixaModal(false);
         toast.success("Caixa aberto com sucesso!");
         onRequestSummaryRefresh(); // Request summary refresh
       }
-    } catch (e:any) { toast.error("Erro ao abrir caixa: " + e.message); }
+    } catch (e: any) { toast.error("Erro ao abrir caixa: " + e.message); }
     finally { setIsSubmittingCaixaAction(false); }
   };
 
@@ -224,7 +219,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
       fetchCaixaMovimentacoes(activeCaixaDetails.id); // Refresh movimentacoes
       handleCloseFinanceModal();
       onRequestSummaryRefresh(); // Request summary refresh
-    } catch (e:any) { toast.error("Erro ao registrar movimentação: " + e.message); }
+    } catch (e: any) { toast.error("Erro ao registrar movimentação: " + e.message); }
     finally { setIsSubmittingCaixaAction(false); }
   };
 
@@ -238,16 +233,16 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
     doc.text("Fechamento de Caixa", pageWidth / 2, currentY, { align: "center" });
     currentY += 10;
     doc.setFontSize(10);
-    doc.text(`ID Caixa: ${caixa.id.substring(0,6)}...`, margin, currentY); currentY += 7;
+    doc.text(`ID Caixa: ${caixa.id.substring(0, 6)}...`, margin, currentY); currentY += 7;
     doc.text(`Usuário: ${currentUser?.email || 'N/A'}`, margin, currentY); currentY += 7;
     doc.text(`Abertura: ${new Date(caixa.data_abertura).toLocaleString('pt-BR')}`, margin, currentY); currentY += 7;
     doc.text(`Fechamento: ${new Date(caixa.data_fechamento!).toLocaleString('pt-BR')}`, margin, currentY); currentY += 7;
-    doc.text(`Valor Inicial: ${Number(caixa.valor_inicial).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`, margin, currentY); currentY += 7;
-    if(caixa.observacoes_abertura) {doc.text(`Obs. Abertura: ${caixa.observacoes_abertura}`, margin, currentY); currentY+=7;}
-    if(obs){doc.text(`Obs. Fechamento: ${obs}`, margin, currentY); currentY+=7;}
-    doc.text(`Total Entradas: ${tots.e.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`, margin, currentY); currentY += 7;
-    doc.text(`Total Saídas: ${tots.s.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`, margin, currentY); currentY += 7;
-    doc.text(`Saldo Final Calculado: ${tots.sal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}`, margin, currentY); currentY += 10;
+    doc.text(`Valor Inicial: ${Number(caixa.valor_inicial).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, margin, currentY); currentY += 7;
+    if (caixa.observacoes_abertura) { doc.text(`Obs. Abertura: ${caixa.observacoes_abertura}`, margin, currentY); currentY += 7; }
+    if (obs) { doc.text(`Obs. Fechamento: ${obs}`, margin, currentY); currentY += 7; }
+    doc.text(`Total Entradas: ${tots.e.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, margin, currentY); currentY += 7;
+    doc.text(`Total Saídas: ${tots.s.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, margin, currentY); currentY += 7;
+    doc.text(`Saldo Final Calculado: ${tots.sal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, margin, currentY); currentY += 10;
 
     autoTable(doc, {
       startY: currentY,
@@ -256,15 +251,15 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
         new Date(t.created_at).toLocaleTimeString('pt-BR'),
         t.tipo,
         t.forma_pagamento,
-        Number(t.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),
-        t.descricao||'-',
-        t.cliente_nome||'-',
-        t.produto_nome||'-'
+        Number(t.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        t.descricao || '-',
+        t.cliente_nome || '-',
+        t.produto_nome || '-'
       ]),
       theme: 'grid',
       headStyles: { fillColor: [41, 128, 185] } // Example color
     });
-    doc.save(`fechamento_caixa_${caixa.id.substring(0,6)}.pdf`);
+    doc.save(`fechamento_caixa_${caixa.id.substring(0, 6)}.pdf`);
     toast.success("PDF de fechamento gerado!");
   };
 
@@ -280,11 +275,11 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
       if (transErr) throw transErr;
 
       let totalEntradas = 0, totalSaidas = 0;
-      (trans||[]).forEach(t => {
+      (trans || []).forEach(t => {
         if (t.tipo === "pagamento" || t.tipo === "venda") totalEntradas += Number(t.valor);
         else if (t.tipo === "saida") totalSaidas += Number(t.valor);
       });
-      const saldoFinal = (activeCaixaDetails.valor_inicial||0) + totalEntradas - totalSaidas;
+      const saldoFinal = (activeCaixaDetails.valor_inicial || 0) + totalEntradas - totalSaidas;
       const dataFechamentoISO = new Date().toISOString();
 
       const updateCaixaPayload = {
@@ -303,7 +298,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
         valor_total_saidas: totalSaidas,
         saldo_final_calculado: saldoFinal
       };
-      generatePDFFechamentoCaixa(updatedActiveCaixaForPDF, (trans||[]) as FinanceiroItem[], {e:totalEntradas,s:totalSaidas,sal:saldoFinal}, formData.observacoes_fechamento);
+      generatePDFFechamentoCaixa(updatedActiveCaixaForPDF, (trans || []) as FinanceiroItem[], { e: totalEntradas, s: totalSaidas, sal: saldoFinal }, formData.observacoes_fechamento);
 
       toast.success("Caixa fechado com sucesso!");
       setActiveCaixaDetails(null);
@@ -311,9 +306,58 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
       setShowFecharCaixaModal(false);
       await fetchCaixaMovimentacoes(null); // Clear movimentacoes
       onRequestSummaryRefresh(); // Request summary refresh
-    } catch (e:any) { toast.error("Erro ao fechar caixa: " + e.message); }
+    } catch (e: any) { toast.error("Erro ao fechar caixa: " + e.message); }
     finally { setIsSubmittingCaixaAction(false); }
   };
+
+
+  // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!currentUser) return; // Shortcuts only active if user is logged in
+
+      // F1: Abrir/Fechar Caixa
+      if (event.key === "F1") {
+        event.preventDefault();
+        if (activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id) {
+          handleAbrirModalFechamento(); // Fechar Caixa
+        } else if (!activeCaixaDetails) {
+          setShowAbrirCaixaModal(true); // Abrir Caixa
+        }
+      }
+      // F2: Nova Movimentação (only if caixa is open)
+      else if (event.key === "F2" && activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id) {
+        event.preventDefault();
+        setIsFinanceModalOpen(true);
+      }
+      // F3: Histórico (only if caixa is open)
+      else if (event.key === "F3" && activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id) {
+        event.preventDefault();
+        setIsHistoryModalOpen(true);
+      }
+      // Escape: Fechar Modais Abertos
+      else if (event.key === "Escape") {
+        if (showAbrirCaixaModal) {
+          event.preventDefault();
+          handleCloseAbrirCaixaModal();
+        } else if (isFinanceModalOpen) {
+          event.preventDefault();
+          handleCloseFinanceModal();
+        } else if (showFecharCaixaModal) {
+          event.preventDefault();
+          handleCloseFecharCaixaModal();
+        } else if (isHistoryModalOpen) {
+          event.preventDefault();
+          setIsHistoryModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentUser, activeCaixaDetails, handleAbrirModalFechamento, setIsFinanceModalOpen, setIsHistoryModalOpen, setShowAbrirCaixaModal, showAbrirCaixaModal, isFinanceModalOpen, showFecharCaixaModal, isHistoryModalOpen, handleCloseAbrirCaixaModal, handleCloseFinanceModal, handleCloseFecharCaixaModal]);
+
 
   if (!currentUser) { // Early return or placeholder if no user is logged in
     return <Styles.SectionContainer>Por favor, faça login para acessar o caixa.</Styles.SectionContainer>;
@@ -321,72 +365,81 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
 
   return (
     <Styles.SectionContainer>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         {/* Search Input div removed */}
-        <div style={{flexGrow:1}}> {/* This div can be removed if ActionButtonsContainer will fill width or be positioned differently later */}
+        <div style={{ flexGrow: 1 }}> {/* This div can be removed if ActionButtonsContainer will fill width or be positioned differently later */}
           {/* Placeholder for potential future content or remove if layout is handled by parent/ActionButtonsContainer exclusively */}
         </div>
         <ActionButtonsContainer>
-          {activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id && (
+          {activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id ? (
             <Styles.FecharCaixaButton onClick={handleAbrirModalFechamento} disabled={isSubmittingCaixaAction || isLoadingCaixaSelectData}>
-              Fechar Caixa
+              Fechar Caixa [F1]
             </Styles.FecharCaixaButton>
-          )}
-          <Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData || isSubmittingCaixaAction}>
-            Nova Mov.
+          ) :
+            (
+              <Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData || isSubmittingCaixaAction}>
+                Abrir Caixa [F1]
+              </Styles.CadastrarButton>
+            )
+          }
+          <Styles.CadastrarButton onClick={handleNovaMovimentacaoClick} disabled={isLoadingCaixaSelectData || isSubmittingCaixaAction || !activeCaixaDetails}>
+            Nova Mov. [F2]
           </Styles.CadastrarButton>
           <Styles.HistoryButton
             onClick={() => setIsHistoryModalOpen(true)}
             disabled={!activeCaixaDetails || isSubmittingCaixaAction || isLoadingCaixaSelectData}
           >
-            Histórico
+            Histórico [F3]
           </Styles.HistoryButton>
         </ActionButtonsContainer>
       </div>
-      {isCaixaLoading ? (
-        <Styles.LoaderDiv><Loader color="#000"/></Styles.LoaderDiv>
-      ) : (
-        null // Table was here, now explicitly rendering nothing.
-      )}
-      {showAbrirCaixaModal && (
-        <AbrirCaixaModal
-          open={showAbrirCaixaModal}
-          onClose={handleCloseAbrirCaixaModal}
-          onAbrirCaixa={handleAbrirCaixa}
-          userName={currentUser.email || "Usuário"}
-          isSubmitting={isSubmittingCaixaAction}
-        />
-      )}
-      {isFinanceModalOpen && activeCaixaDetails && (
-        <CaixaModal
-          open={isFinanceModalOpen}
-          onClose={handleCloseFinanceModal}
-          onSave={handleSaveMovimentacao}
-          alunosList={alunosListCaixa}
-          produtosList={produtosListCaixa}
-          formasPagamentoList={HARDCODED_FORMAS_PAGAMENTO}
-          isSubmitting={isSubmittingCaixaAction}
-          isLoadingSelectData={isLoadingCaixaSelectData}
-        />
-      )}
-      {showFecharCaixaModal && activeCaixaDetails && (
-        <FecharCaixaModal
-          open={showFecharCaixaModal}
-          onClose={handleCloseFecharCaixaModal}
-          onConfirmFechar={handleConfirmarFechamentoCaixa}
-          caixaId={activeCaixaDetails.id}
-          isSubmitting={isSubmittingCaixaAction}
-        />
-      )}
-      {activeCaixaDetails && ( // Conditionally render TransactionHistoryModal
-        <TransactionHistoryModal
-          isOpen={isHistoryModalOpen}
-          onClose={() => setIsHistoryModalOpen(false)}
-          currentUser={currentUser}
-          activeCaixaId={activeCaixaDetails.id}
-        />
-      )}
-    </Styles.SectionContainer>
+      {
+        showAbrirCaixaModal && (
+          <AbrirCaixaModal
+            open={showAbrirCaixaModal}
+            onClose={handleCloseAbrirCaixaModal}
+            onAbrirCaixa={handleAbrirCaixa}
+            userName={currentUser.email || "Usuário"}
+            isSubmitting={isSubmittingCaixaAction}
+          />
+        )
+      }
+      {
+        isFinanceModalOpen && activeCaixaDetails && (
+          <CaixaModal
+            open={isFinanceModalOpen}
+            onClose={handleCloseFinanceModal}
+            onSave={handleSaveMovimentacao}
+            alunosList={alunosListCaixa}
+            produtosList={produtosListCaixa}
+            formasPagamentoList={HARDCODED_FORMAS_PAGAMENTO}
+            isSubmitting={isSubmittingCaixaAction}
+            isLoadingSelectData={isLoadingCaixaSelectData}
+          />
+        )
+      }
+      {
+        showFecharCaixaModal && activeCaixaDetails && (
+          <FecharCaixaModal
+            open={showFecharCaixaModal}
+            onClose={handleCloseFecharCaixaModal}
+            onConfirmFechar={handleConfirmarFechamentoCaixa}
+            caixaId={activeCaixaDetails.id}
+            isSubmitting={isSubmittingCaixaAction}
+          />
+        )
+      }
+      {
+        activeCaixaDetails && ( // Conditionally render TransactionHistoryModal
+          <TransactionHistoryModal
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+            currentUser={currentUser}
+            activeCaixaId={activeCaixaDetails.id}
+          />
+        )
+      }
+    </Styles.SectionContainer >
   );
 };
 

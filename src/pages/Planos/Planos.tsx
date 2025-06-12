@@ -168,9 +168,6 @@ const Planos: React.FC = () => {
             Cadastre, edite e visualize os planos de modalidades.
           </Styles.Subtitle>
         </div>
-        <Styles.AddButton onClick={openCreatePlanoModal}>
-          <FiPlus size={18} style={{ marginRight: '8px' }} /> Cadastrar Plano
-        </Styles.AddButton>
       </Styles.HeaderContainer>
 
       {isLoading && !planos.length && !generalError ? (
@@ -181,20 +178,26 @@ const Planos: React.FC = () => {
         <Styles.ErrorContainer>{generalError}</Styles.ErrorContainer>
       ) : (
         <>
-          <Styles.SearchInputContainer>
-            <Styles.SearchInput
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({...prev, search: e.target.value, currentPage: 1}))}
-              placeholder="Pesquisar por nome ou modalidade..."
-            />
-          </Styles.SearchInputContainer>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
+              <Styles.SearchInput
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value, currentPage: 1 }))}
+                placeholder="Pesquisar por nome ou modalidade..."
+              />
+            </div>
+            <Styles.AddButton onClick={openCreatePlanoModal}>
+              <FiPlus size={18} style={{ marginRight: '8px' }} /> Cadastrar Plano
+            </Styles.AddButton>
+          </div>
+
           <DefaultTable
             data={filteredPlanos}
             columns={columns}
             rowsPerPage={filters.rowsPerPage}
             currentPage={filters.currentPage}
-            onPageChange={(page) => setFilters(prev => ({...prev, currentPage: page}))}
-            onRowsPerPageChange={(r) => setFilters(prev => ({...prev, rowsPerPage: r, currentPage: 1}))}
+            onPageChange={(page) => setFilters(prev => ({ ...prev, currentPage: page }))}
+            onRowsPerPageChange={(r) => setFilters(prev => ({ ...prev, rowsPerPage: r, currentPage: 1 }))}
             isLoading={isLoading && planos.length > 0}
             noDataMessage="Nenhum plano encontrado."
           />

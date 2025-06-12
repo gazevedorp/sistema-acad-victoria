@@ -6,7 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Loader from "../../components/Loader/Loader.tsx";
 import * as Styles from "./Products.styles.ts"; // Assuming Styles.Button exists or will be created
 import { Product } from "../../types/ProductType.ts";
-import ProductModal from "../../components/ProductModal/ProductModal";
+import ProductModal from "./components/ProductModal/ProductModal.tsx";
 import ActionsMenu from "../../components/ActionMenu/ActionMenu.tsx"; // Import ActionMenu
 import { FaEdit, FaPlus } from "react-icons/fa"; // Import icons for buttons
 
@@ -18,28 +18,28 @@ const getColumns = (
   activeRowMenu: string | null,
   setActiveRowMenu: (id: string | null) => void
 ): TableColumn<Product>[] => [
-  { field: "nome", header: "Nome" },
-  { field: "valor", header: "Valor", formatter: "money" },
-  { field: "ativo", header: "Status", formatter: "status" },
-  {
-    field: "actions",
-    header: "Ações",
-    render: (product) => (
-      <ActionsMenu<Product>
-        rowValue={product}
-        isOpen={activeRowMenu === product.id}
-        onToggle={() => setActiveRowMenu(activeRowMenu === product.id ? null : product.id)}
-        onClose={() => setActiveRowMenu(null)}
-        onEdit={() => {
-          onEdit(product);
-          setActiveRowMenu(null); // Close menu after action
-        }}
-        // Add onDelete prop later
-        noDelete={true} // For now, no delete functionality from this menu
-      />
-    ),
-  },
-];
+    { field: "nome", header: "Nome" },
+    { field: "valor", header: "Valor", formatter: "money" },
+    { field: "ativo", header: "Status", formatter: "status" },
+    {
+      field: "actions",
+      header: "Ações",
+      render: (product) => (
+        <ActionsMenu<Product>
+          rowValue={product}
+          isOpen={activeRowMenu === product.id}
+          onToggle={() => setActiveRowMenu(activeRowMenu === product.id ? null : product.id)}
+          onClose={() => setActiveRowMenu(null)}
+          onEdit={() => {
+            onEdit(product);
+            setActiveRowMenu(null); // Close menu after action
+          }}
+          // Add onDelete prop later
+          noDelete={true} // For now, no delete functionality from this menu
+        />
+      ),
+    },
+  ];
 
 const Produtos: React.FC = () => {
   const [produtos, setProdutos] = useState<Product[]>([]);
@@ -181,14 +181,9 @@ const Produtos: React.FC = () => {
     <Styles.Container>
       <Styles.Header>
         <div>
-          <Styles.Title>Produtos</Styles.Title>
+          <Styles.Title>Gerenciamento de Produtos</Styles.Title>
           <Styles.Subtitle>Cadastre e gerencie os Produtos</Styles.Subtitle>
         </div>
-        {/* Create Product Button - Assuming Styles.CreateButton exists or is a generic button */}
-        <Styles.Button onClick={handleOpenCreateModal}> {/* Changed from Styles.CreateButton */}
-          <FaPlus style={{ marginRight: '8px' }} />
-          Novo Produto
-        </Styles.Button>
       </Styles.Header>
 
       {onLoading && !isModalOpen ? (
@@ -197,14 +192,18 @@ const Produtos: React.FC = () => {
         </Styles.LoaderDiv>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ maxWidth: 400 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
               <Styles.Input
                 value={inputSearch}
                 onChange={(e) => setInputSearch(e.target.value)}
                 placeholder="Pesquisar Produto"
               />
             </div>
+            <Styles.Button onClick={handleOpenCreateModal}> {/* Changed from Styles.CreateButton */}
+              <FaPlus style={{ marginRight: '8px' }} />
+              Novo Produto
+            </Styles.Button>
           </div>
           <DefaultTable
             data={paginatedData}

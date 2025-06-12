@@ -20,7 +20,7 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.h1`
-  font-size: 32px;
+  font-size: 1.75rem;
   margin: 0 0 8px 0;
   font-weight: 600;
 `;

@@ -10,9 +10,12 @@ import { MaskPattern, IMaskPatternType } from "../../utils/formatter";
 import ActionsMenu from "../ActionMenu/ActionMenu";
 
 export interface TableColumn<T> {
-  field: keyof T | string;
+  field: string; // Unique identifier for the column. If not using render, it's typically a keyof T.
   header: string;
   formatter?: IMaskPatternType;
+  render?: (rowData: T, rowIndex?: number) => React.ReactNode; // Custom render function for the cell
+  width?: number; // Optional width for the column in pixels
+  textAlign?: 'left' | 'center' | 'right'; // Optional text alignment
 }
 
 export interface DefaultTableProps<T> {
@@ -104,11 +107,13 @@ function DefaultTable<T extends Record<string, any>>(
   const columnHelper = createColumnHelper<T>();
 
   const tanstackColumns = useMemo(() => {
-    return visibleColumns.map((col) => {
+    return visibleColumns.map((col: TableColumn<T>) => { // Ensure col is typed correctly
       if (col.field === "__acoes") {
         return columnHelper.display({
           id: "__acoes",
           header: col.header,
+          size: col.width || 100, // Default width for actions or use provided
+          meta: { textAlign: col.textAlign || "center" },
           cell: (info) => {
             const rowValue = info.row.original;
             return (
@@ -143,21 +148,27 @@ function DefaultTable<T extends Record<string, any>>(
 
       const fieldName = String(col.field);
 
-      return columnHelper.accessor((row) => row[col.field as keyof T], {
+      // If a custom render function is provided for the column
+      if (col.render) {
+        return columnHelper.display({
+          id: fieldName,
+          header: col.header,
+          size: col.width,
+          meta: { textAlign: col.textAlign },
+          cell: (info) => col.render!(info.row.original, info.row.index),
+        });
+      }
+
+      // If no custom render, use accessor for standard data display + formatting
+      return columnHelper.accessor((row) => row[col.field as keyof T], { // Assumes col.field is a keyof T if no render
         id: fieldName,
         header: col.header,
+        size: col.width,
+        meta: { textAlign: col.textAlign },
         cell: (info) => {
           const value = info.getValue();
-          if (
-            col.formatter &&
-            value !== null &&
-            value !== undefined &&
-            value !== ""
-          ) {
-            const maskedValue = mask.applyMask(
-              String(value || ""),
-              col.formatter
-            );
+          if (col.formatter && value != null && value !== "") {
+            const maskedValue = mask.applyMask(String(value || ""), col.formatter);
             return <Styles.EllipsisSpan>{maskedValue}</Styles.EllipsisSpan>;
           }
           return (
@@ -167,6 +178,7 @@ function DefaultTable<T extends Record<string, any>>(
           );
         },
       });
+
     });
   }, [visibleColumns, columnHelper, onView, onEdit, onDelete, mask, openRowId]);
 
@@ -214,7 +226,12 @@ function DefaultTable<T extends Record<string, any>>(
               {headerGroup.headers.map((header) => (
                 <Styles.Th
                   key={header.id}
-                  style={header.id == "__acoes" ? { textAlign: "center" } : {}}
+                  style={{
+                    width: header.column.columnDef.size
+                      ? `${header.column.columnDef.size}px`
+                      : undefined,
+                    textAlign: (header.column.columnDef.meta as any)?.textAlign || 'left',
+                  }}
                 >
                   {flexRender(
                     header.column.columnDef.header,
@@ -229,7 +246,14 @@ function DefaultTable<T extends Record<string, any>>(
           {table.getRowModel().rows.map((row) => (
             <tr key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <Styles.Td key={cell.id}>
+                <Styles.Td
+                  key={cell.id}
+                  style={{
+                    width: cell.column.columnDef.size
+                      ? `${cell.column.columnDef.size}px`
+                      : undefined,
+                    textAlign: (cell.column.columnDef.meta as any)?.textAlign || 'left',
+                  }}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </Styles.Td>
               ))}

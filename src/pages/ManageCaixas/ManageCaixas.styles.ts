@@ -1,8 +1,20 @@
 import styled from 'styled-components';
+import { COLORS } from '../Home/Home.styles';
 
 export const Container = styled.div`
-  padding: 20px;
-  /* Add more styles as needed */
+  width: 100%;
+  padding: 24px;
+  background-color: ${COLORS.white};
+  min-height: 100vh;
+  h1{
+  font-size: 1.75rem;
+  margin: 0 0 8px 0;
+  }
+  p{
+  font-size: 14px;
+  color: #888;
+  margin: 0;
+  }
 `;
 
 export const ControlsContainer = styled.div`
@@ -30,23 +42,25 @@ export const ActionButtonsContainer = styled.div`
   justify-content: center; /* Or left, depending on preference */
 
   button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-    display: flex; /* Align icon center */
-    align-items: center; /* Align icon center */
-    justify-content: center; /* Align icon center */
+   display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  background-color: #0898e6; // Example primary color
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
 
-    &:hover {
-      background-color: #f0f0f0; /* Light hover effect */
-    }
+  &:hover {
+    background-color: #0b7ac1; // Darker shade for hover
+  }
 
-    svg {
-      font-size: 16px; /* Adjust icon size */
-      color: #333; /* Icon color */
-    }
+  svg {
+    margin-right: 8px;
+  }
   }
 `;

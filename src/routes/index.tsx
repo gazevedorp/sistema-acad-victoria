@@ -10,7 +10,8 @@ import Turmas from "../pages/Turmas/Turmas";
 import Relatorios from "../pages/Relatorios/Relatorios";
 import Plans from "../pages/Planos/Planos";
 // import Caixa from "../pages/Caixa/Caixa";
-import ManageCaixas from "../pages/ManageCaixas/ManageCaixas"; // Added import
+import ManageCaixas from "../pages/ManageCaixas/ManageCaixas";
+import Users from "../pages/Users/Users"; // Added import for Users page
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -35,7 +36,8 @@ const AppRoutes: React.FC = () => {
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="planos" element={<Plans />} />
           {/* <Route path="caixa" element={<Caixa />} /> */}
-          <Route path="caixas" element={<ManageCaixas />} /> {/* Added route */}
+          <Route path="caixas" element={<ManageCaixas />} />
+          <Route path="users" element={<Users />} /> {/* Added route for Users */}
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
