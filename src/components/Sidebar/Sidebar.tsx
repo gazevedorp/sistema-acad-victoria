@@ -13,6 +13,7 @@ import {
   FiBox,
   FiArchive, // Added FiArchive
 } from "react-icons/fi";
+import { FaUserFriends } from 'react-icons/fa'; // Added FaUserFriends
 import { useAuthStore } from "../../store/authStore";
 
 const useIsMobile = () => {
@@ -52,6 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
     { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
     { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
     { icon: <FiArchive />, text: "Caixas", route: "/caixas" }, // Added new menu item
+    { icon: <FaUserFriends />, text: "Usuários [F8]", route: "/users" }, // Added Users link
     // { icon: <FiBarChart2 />, text: "Relatorios [F7]", route: "/relatorios" },
   ], []);
 

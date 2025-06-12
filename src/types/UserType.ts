@@ -1,8 +1,8 @@
 export interface SistemUser {
-  id: string;
+  id: string; // This will be auth.users.id from Supabase
   nome: string;
   email: string;
-  tipo: string;
-  senha: string;
+  telefone: string; // New field
+  permissao: 'admin' | 'recepcao'; // New field with specific values
   ativo: boolean;
 }
