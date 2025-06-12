@@ -70,7 +70,6 @@ export const SearchInput = styled.input`
   border: 1px solid ${COLORS.borderDefault};
   border-radius: 6px;
   width: 100%;
-  max-width: 400px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:focus {

@@ -41,12 +41,12 @@ const TurmaModal: React.FC<BaseTurmaModalProps> = ({
       } else if (initialData) {
         // Ensure all form fields are reset with initialData or defaults
         const dataToReset: TurmaFormData = {
-            nome: initialData.nome || defaultTurmaFormValues.nome,
-            capacidade: initialData.capacidade !== undefined ? initialData.capacidade : defaultTurmaFormValues.capacidade,
-            horarios_descricao: initialData.horarios_descricao || defaultTurmaFormValues.horarios_descricao,
-            descricao: initialData.descricao !== undefined ? initialData.descricao : defaultTurmaFormValues.descricao,
-            modalidade_id: initialData.modalidade_id || defaultTurmaFormValues.modalidade_id,
-            ativo: initialData.ativo !== undefined ? initialData.ativo : defaultTurmaFormValues.ativo,
+          nome: initialData.nome || defaultTurmaFormValues.nome,
+          capacidade: initialData.capacidade !== undefined ? initialData.capacidade : defaultTurmaFormValues.capacidade,
+          horarios_descricao: initialData.horarios_descricao || defaultTurmaFormValues.horarios_descricao,
+          descricao: initialData.descricao !== undefined ? initialData.descricao : defaultTurmaFormValues.descricao,
+          modalidade_id: initialData.modalidade_id || defaultTurmaFormValues.modalidade_id,
+          ativo: initialData.ativo !== undefined ? initialData.ativo : defaultTurmaFormValues.ativo,
         };
         reset(dataToReset);
       }
@@ -95,6 +95,23 @@ const TurmaModal: React.FC<BaseTurmaModalProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+
+      if (event.key === "Escape") {
+        if (open) {
+          event.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onClose]);
 
   if (!open) {
     return null;
@@ -173,20 +190,20 @@ const TurmaModal: React.FC<BaseTurmaModalProps> = ({
             </Styles.FormGroup>
 
             <Styles.FormGroup>
-               <Styles.CheckboxContainer>
+              <Styles.CheckboxContainer>
                 <Controller
-                    name="ativo"
-                    control={control}
-                    render={({ field: { onChange, value, ref } }) => (
-                        <Styles.CheckboxInput
-                        type="checkbox"
-                        id="ativo"
-                        ref={ref}
-                        checked={value}
-                        onChange={onChange}
-                        disabled={isViewMode}
-                        />
-                    )}
+                  name="ativo"
+                  control={control}
+                  render={({ field: { onChange, value, ref } }) => (
+                    <Styles.CheckboxInput
+                      type="checkbox"
+                      id="ativo"
+                      ref={ref}
+                      checked={value}
+                      onChange={onChange}
+                      disabled={isViewMode}
+                    />
+                  )}
                 />
                 <Styles.CheckboxLabel htmlFor="ativo">Ativo</Styles.CheckboxLabel>
               </Styles.CheckboxContainer>

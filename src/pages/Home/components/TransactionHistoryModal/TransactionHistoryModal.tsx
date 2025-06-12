@@ -54,7 +54,7 @@ const TransactionHistoryModal: React.FC<TransactionHistoryModalProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterType, setFilterType] = useState<string>("todos");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(5);
 
   const fetchTransactions = useCallback(async (caixaId: string | null) => {
     if (!caixaId) {

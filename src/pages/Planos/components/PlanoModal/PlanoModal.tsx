@@ -40,11 +40,11 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
       } else if (initialData) {
         // Ensure all form fields are reset with initialData or defaults
         const dataToReset: PlanoFormData = {
-            nome: initialData.nome || defaultPlanoFormValues.nome,
-            modalidade_id: initialData.modalidade_id || defaultPlanoFormValues.modalidade_id,
-            valor_mensal: initialData.valor_mensal !== undefined ? initialData.valor_mensal : defaultPlanoFormValues.valor_mensal,
-            desconto_em_combinacao: initialData.desconto_em_combinacao !== undefined ? initialData.desconto_em_combinacao : defaultPlanoFormValues.desconto_em_combinacao,
-            ativo: initialData.ativo !== undefined ? initialData.ativo : defaultPlanoFormValues.ativo,
+          nome: initialData.nome || defaultPlanoFormValues.nome,
+          modalidade_id: initialData.modalidade_id || defaultPlanoFormValues.modalidade_id,
+          valor_mensal: initialData.valor_mensal !== undefined ? initialData.valor_mensal : defaultPlanoFormValues.valor_mensal,
+          desconto_em_combinacao: initialData.desconto_em_combinacao !== undefined ? initialData.desconto_em_combinacao : defaultPlanoFormValues.desconto_em_combinacao,
+          ativo: initialData.ativo !== undefined ? initialData.ativo : defaultPlanoFormValues.ativo,
         };
         reset(dataToReset);
       }
@@ -94,6 +94,23 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+
+      if (event.key === "Escape") {
+        if (open) {
+          event.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onClose]);
 
   if (!open) {
     return null;
@@ -163,20 +180,20 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
             </Styles.FormRow>
 
             <Styles.FormGroup>
-               <Styles.CheckboxContainer>
+              <Styles.CheckboxContainer>
                 <Controller
-                    name="ativo"
-                    control={control}
-                    render={({ field: { onChange, value, ref } }) => (
-                        <Styles.CheckboxInput
-                        type="checkbox"
-                        id="ativo"
-                        ref={ref}
-                        checked={!!value} // Ensure value is boolean
-                        onChange={onChange}
-                        disabled={isViewMode}
-                        />
-                    )}
+                  name="ativo"
+                  control={control}
+                  render={({ field: { onChange, value, ref } }) => (
+                    <Styles.CheckboxInput
+                      type="checkbox"
+                      id="ativo"
+                      ref={ref}
+                      checked={!!value} // Ensure value is boolean
+                      onChange={onChange}
+                      disabled={isViewMode}
+                    />
+                  )}
                 />
                 <Styles.CheckboxLabel htmlFor="ativo">Ativo</Styles.CheckboxLabel>
               </Styles.CheckboxContainer>

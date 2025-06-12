@@ -44,6 +44,23 @@ const EditCaixaModal: React.FC<EditCaixaModalProps> = ({ isOpen, onClose, onSave
     await onSave(formData);
   };
 
+    // --- KEYBOARD SHORTCUTS ---
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+  
+        if (event.key === "Escape") {
+          if (isOpen) {
+            event.preventDefault();
+            onClose();
+          }
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }, [isOpen, onClose]);
+
   if (!isOpen || !caixaData) return null;
 
   return (

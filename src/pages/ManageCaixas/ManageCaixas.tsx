@@ -16,7 +16,7 @@ const ManageCaixas: React.FC = () => {
   const [caixas, setCaixas] = useState<CaixaWithUserEmail[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(5);
 
   // Filtering states
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -194,30 +194,11 @@ const ManageCaixas: React.FC = () => {
     }
   };
 
-  const handleAttemptDeleteCaixa = async (caixaId: string, caixaStatus: string) => {
-    if (isDeleting) return; // Prevent multiple delete attempts
-
-    if (caixaStatus === 'aberto') {
-      toast.warn("Não é possível excluir um caixa que está aberto. Por favor, feche-o primeiro.");
-      return;
-    }
-
-    const confirmDelete = window.confirm(
-      `Tem certeza que deseja excluir o caixa ${caixaId.substring(0,8)}...? Esta ação não pode ser desfeita.\n(Transações associadas podem ser afetadas dependendo da configuração do banco de dados).`
-    );
-    if (confirmDelete) {
-      await proceedWithDelete(caixaId);
-    }
-  };
-
-
   const columns: TableColumn<CaixaWithUserEmail>[] = useMemo(() => [
     { field: 'usuario_email', header: 'Usuário' },
     { field: 'data_abertura', header: 'Abertura', formatter: "date" },
     { field: 'data_fechamento', header: 'Fechamento', formatter: "date" },
     { field: 'valor_inicial', header: 'Vl. Inicial', formatter: "money" },
-    { field: 'valor_total_entradas', header: 'Entradas', formatter: "money" },
-    { field: 'valor_total_saidas', header: 'Saídas', formatter: "money" },
     { field: 'saldo_final_calculado', header: 'Saldo Final', formatter: "money" },
     { field: 'status', header: 'Status' },
     {
@@ -226,18 +207,11 @@ const ManageCaixas: React.FC = () => {
       render: (caixa: CaixaWithUserEmail) => (
         <Styles.ActionButtonsContainer>
           <button onClick={() => handleViewHistory(caixa.id)} title="Ver Transações" disabled={isDeleting}>
-            <FiList />
+            <FiList /> Detalhes
           </button>
-          <button onClick={() => handleOpenEditModal(caixa)} title="Editar Caixa" disabled={isDeleting}>
+          {/* <button onClick={() => handleOpenEditModal(caixa)} title="Editar Caixa" disabled={isDeleting}>
             <FiEdit />
-          </button>
-          <button
-            onClick={() => handleAttemptDeleteCaixa(caixa.id, caixa.status)}
-            title="Excluir Caixa"
-            disabled={isDeleting || caixa.status === 'aberto'} // Also disable if open, as a visual cue
-          >
-            <FiTrash2 />
-          </button>
+          </button> */}
         </Styles.ActionButtonsContainer>
       ),
     }
@@ -250,7 +224,8 @@ const ManageCaixas: React.FC = () => {
 
   return (
     <Styles.Container>
-      <h1>Gerenciar Caixas</h1>
+      <h1>Gerenciamento de Caixas</h1>
+      <p>Visualize e gerencie os Caixas</p>
       <Styles.ControlsContainer>
         <input type="text" placeholder="Pesquisar Usuário..." value={userFilter} onChange={(e) => setUserFilter(e.target.value)} />
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>

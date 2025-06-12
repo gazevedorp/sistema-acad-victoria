@@ -19,7 +19,7 @@ const Turmas: React.FC = () => {
   const [selectedTurma, setSelectedTurma] = useState<Turma | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [inputSearch, setInputSearch] = useState<string>("");
 
@@ -179,9 +179,6 @@ const Turmas: React.FC = () => {
             Cadastre, edite e visualize as turmas.
           </Styles.Subtitle>
         </div>
-        <Styles.AddButton onClick={openCreateTurmaModal}>
-          <FiPlus size={18} style={{ marginRight: '8px' }} /> Cadastrar Turma
-        </Styles.AddButton>
       </Styles.HeaderContainer>
 
       {isLoading && !turmas.length ? (
@@ -192,13 +189,18 @@ const Turmas: React.FC = () => {
         <Styles.ErrorContainer>{generalError}</Styles.ErrorContainer>
       ) : (
         <>
-          <Styles.SearchInputContainer>
-            <Styles.SearchInput
-              value={inputSearch}
-              onChange={(e) => setInputSearch(e.target.value)}
-              placeholder="Pesquisar por nome ou modalidade..."
-            />
-          </Styles.SearchInputContainer>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
+              <Styles.SearchInput
+                value={inputSearch}
+                onChange={(e) => setInputSearch(e.target.value)}
+                placeholder="Pesquisar por nome ou modalidade..."
+              />
+            </div>
+            <Styles.AddButton onClick={openCreateTurmaModal}>
+              <FiPlus size={18} style={{ marginRight: '8px' }} /> Cadastrar Turma
+            </Styles.AddButton>
+          </div>
           <DefaultTable
             data={currentTableData}
             columns={columns}
@@ -206,7 +208,7 @@ const Turmas: React.FC = () => {
             currentPage={currentPage}
             totalRows={totalRows}
             onPageChange={setCurrentPage}
-            onRowsPerPageChange={(r) => {setRowsPerPage(r); setCurrentPage(1);}}
+            onRowsPerPageChange={(r) => { setRowsPerPage(r); setCurrentPage(1); }}
             isLoading={isLoading && turmas.length > 0}
           />
         </>

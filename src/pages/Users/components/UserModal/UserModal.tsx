@@ -3,7 +3,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as S from './UserModal.styles'; // Assuming styles will be adapted
 import { UserModalFormData, userModalSchema } from './UserModal.definitions';
-import { SistemUser } from '../../types/UserType';
+import { SistemUser } from '../../../../types/UserType';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -66,6 +66,23 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, user, is
   const onSubmit: SubmitHandler<UserModalFormData> = async (data) => {
     await onSave(data, user?.id);
   };
+
+  // --- KEYBOARD SHORTCUTS ---
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+
+      if (event.key === "Escape") {
+        if (isOpen) {
+          event.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
