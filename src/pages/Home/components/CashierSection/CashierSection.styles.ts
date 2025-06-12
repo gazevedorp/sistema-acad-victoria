@@ -68,9 +68,7 @@ export const CadastrarButton = styled.button`
   justify-content: center; /* Center text if no icon */
   gap: 5px;
   transition: background-color 0.15s ease-in-out;
-  &:hover {
-    background: ${COLORS.primary};
-  }
+
   &:disabled {
     background-color: ${COLORS.backgroundDisabled}; // Standard disabled style
     color: ${COLORS.textMuted};

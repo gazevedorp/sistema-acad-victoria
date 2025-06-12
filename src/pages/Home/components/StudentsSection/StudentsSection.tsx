@@ -123,7 +123,7 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
   return (
     <Styles.SectionContainer border> {/* Using a generic SectionContainer, or could be Styles.Section from Home.styles if kept there */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <div style={{ maxWidth: 400, flexGrow: 1, marginRight: "1rem" }}>
+        <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
           <Styles.Input // Assuming Input style will be in StudentsSection.styles.ts
             value={studentSearchInput}
             onChange={(e) => setStudentSearchInput(e.target.value)}
