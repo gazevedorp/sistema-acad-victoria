@@ -270,7 +270,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
     setIsSubmittingCaixaAction(true);
     try {
       const { data: trans, error: transErr } = await supabase.from("financeiro")
-        .select("*, cliente_nome:clientes(nome), produto_nome:produtos(nome)")
+        .select("*")
         .eq("caixa_id", activeCaixaDetails.id);
       if (transErr) throw transErr;
 
@@ -284,7 +284,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
 
       const updateCaixaPayload = {
         status: "fechado", data_fechamento: dataFechamentoISO,
-        obs_fechamento: formData.observacoes_fechamento || null,
+        observacoes_fechamento: formData.observacoes_fechamento || null,
         valor_total_entradas: totalEntradas, valor_total_saidas: totalSaidas,
         saldo_final_calculado: saldoFinal
       };
