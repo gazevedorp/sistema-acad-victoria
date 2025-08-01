@@ -178,3 +178,46 @@ export const ErrorMsg = styled.span`
   color: ${COLORS.danger};
   font-size: 0.75rem;
 `;
+
+// Tab System Styles
+export const TabContainer = styled.div`
+  display: flex;
+  border-bottom: 1px solid ${COLORS.borderDefault};
+  margin-bottom: 20px;
+  overflow-x: auto;
+`;
+
+export const Tab = styled.button<{ $active: boolean; $disabled: boolean }>`
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${({ $active, $disabled }) => 
+    $disabled ? COLORS.textMuted : 
+    $active ? COLORS.primary : COLORS.textLabel};
+  cursor: ${({ $disabled }) => $disabled ? 'not-allowed' : 'pointer'};
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  opacity: ${({ $disabled }) => $disabled ? 0.5 : 1};
+
+  ${({ $active }) => $active && `
+    border-bottom-color: ${COLORS.primary};
+    color: ${COLORS.primary};
+  `}
+
+  &:hover:not(:disabled) {
+    color: ${({ $disabled }) => $disabled ? COLORS.textMuted : COLORS.primary};
+    background-color: ${COLORS.backgroundLight};
+  }
+
+  &:focus {
+    outline: 2px solid ${COLORS.primaryLightFocus};
+    outline-offset: -2px;
+  }
+`;
+
+export const TabContent = styled.div`
+  min-height: 400px;
+`;

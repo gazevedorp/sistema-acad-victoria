@@ -8,19 +8,9 @@ import "react-toastify/dist/ReactToastify.css";
 import { ModalMode as StudentModalMode, DadosCadastraisFormData as StudentFormData } from "../../../Clients/components/ClientModal/ClientModal.definitions";
 import DefaultTable, { TableColumn } from "../../../../components/Table/DefaultTable";
 import ClientModal from "../../../Clients/components/ClientModal/ClientModal";
-import StudentPaymentModal from "../../../Clients/components/StudentPaymentModal/StudentPaymentModal";
-import {
-  StudentPaymentModalFormData,
-  FormaPagamentoParaSelect,
-} from "../../../Clients/components/StudentPaymentModal/StudentPaymentModal.definitions";
-// import { FiPlus } from "react-icons/fi"; // FiPlus is not used in this file after changes
-import { FiEdit, FiDollarSign } from "react-icons/fi"; // Added icons
 
 // --- CONSTANTS ---
-const HARDCODED_FORMAS_PAGAMENTO: FormaPagamentoParaSelect[] = [
-  { id: "dinheiro", nome: "Dinheiro" }, { id: "pix", nome: "PIX" },
-  { id: "debito", nome: "Cartão de Débito" }, { id: "credito", nome: "Cartão de Crédito" },
-];
+// No additional constants needed for this component
 
 // --- UTILITY FUNCTIONS ---
 const adjustString = (text: string | null | undefined): string => {
@@ -43,63 +33,10 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
     setIsClientModalOpen(true);
   }, []); // Empty dependency array if it doesn't depend on other component states/props that change
 
-  // const openViewStudentModal = (client: Client) => { // REMOVED - Not used
-  //   setSelectedClientState(client);
-  //   setClientModalMode(StudentModalMode.VIEW);
-  //   setIsClientModalOpen(true);
-  // };
-
-  // Student Payment Modal State and Handlers
-  const [isStudentPaymentModalOpen, setIsStudentPaymentModalOpen] = useState<boolean>(false);
-  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Client | null>(null);
-  const [isSubmittingPayment, setIsSubmittingPayment] = useState<boolean>(false);
-
-  const openStudentPaymentModal = useCallback((client: Client) => {
-    setSelectedStudentForPayment(client);
-    setIsStudentPaymentModalOpen(true);
-  }, []);
-
-  const closeStudentPaymentModal = useCallback(() => {
-    setIsStudentPaymentModalOpen(false);
-    setSelectedStudentForPayment(null);
-  }, []);
-
-  const handleStudentPaymentSave = useCallback(async (formData: StudentPaymentModalFormData, studentId: string) => {
-    setIsSubmittingPayment(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Usuário não autenticado.");
-        setIsSubmittingPayment(false);
-        return;
-      }
-
-      const paymentData = {
-        tipo: "pagamento", // As per requirement
-        valor: formData.valor,
-        forma_pagamento: formData.forma_pagamento,
-        descricao: formData.descricao || null,
-        cliente_id: studentId,
-        usuario_id_transacao: user.id,
-        // TODO: Consider linking to an active caixa_id if available and appropriate.
-      };
-
-      const { error } = await supabase.from("financeiro").insert([paymentData]);
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success("Pagamento registrado com sucesso!");
-      closeStudentPaymentModal();
-    } catch (error: any) {
-      console.error("Error saving student payment:", error);
-      toast.error(`Erro ao registrar pagamento: ${error.message || "Erro desconhecido"}`);
-    } finally {
-      setIsSubmittingPayment(false);
-    }
-  }, [closeStudentPaymentModal]);
-
+  // Handler for row clicks - opens the modal with student data populated
+  const handleStudentRowClick = useCallback((client: Client) => {
+    openEditStudentModal(client);
+  }, [openEditStudentModal]);
 
   // --- TABLE COLUMN DEFINITION MOVED INSIDE COMPONENT ---
   const studentTableColumns: TableColumn<Client>[] = [
@@ -107,30 +44,6 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
     { field: "telefone", header: "Telefone", formatter: "phone" },
     { field: "data_nascimento", header: "Nascimento", formatter: "date" },
     { field: "ativo", header: "Status", formatter: "status" },
-    {
-      header: "Ações",
-      field: "__actions_custom", // Unique key for this column
-      render: (client: Client) => (
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-          <button
-            onClick={() => openEditStudentModal(client)}
-            title="Editar Aluno"
-            style={{ padding: '6px 10px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <FiEdit /> Editar
-          </button>
-          <button
-          onClick={() => openStudentPaymentModal(client)}
-            title="Registrar Pagamento"
-            style={{ padding: '6px 10px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '4px', background: '#28a745', color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <FiDollarSign /> Pagamento
-          </button>
-        </div>
-      ),
-      textAlign: 'center',
-      width: 200
-    },
   ];
 
   // Student Management States
@@ -273,6 +186,7 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
             setStudentRowsPerPage(r);
             setStudentCurrentPage(1);
           }}
+          onRowClick={handleStudentRowClick}
           // showActions -- REMOVE THIS
           noDelete // Assuming noDelete is a permanent prop here
           // onView={openViewStudentModal} -- REMOVE OR COMMENT OUT
@@ -287,16 +201,6 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
           alunoIdToEdit={clientModalMode === StudentModalMode.EDIT && selectedClientState ? selectedClientState.id : undefined}
           onClose={handleCloseStudentModal}
           onSaveComplete={handleStudentSaveComplete}
-        />
-      )}
-      {isStudentPaymentModalOpen && (
-        <StudentPaymentModal
-          open={isStudentPaymentModalOpen}
-          onClose={closeStudentPaymentModal}
-          onSave={handleStudentPaymentSave}
-          student={selectedStudentForPayment}
-          formasPagamentoList={HARDCODED_FORMAS_PAGAMENTO}
-          isSubmittingExt={isSubmittingPayment}
         />
       )}
     </Styles.SectionContainer>

@@ -6,10 +6,7 @@ export const SectionContainer = styled.div<{ border?: boolean }>`
   background-color: ${COLORS.white};
   // padding-bottom: 1.5rem; /* Removed to avoid conflict with Home.tsx layout */
   // margin-bottom: 1.5rem; /* Removed to avoid conflict with Home.tsx layout */
-  // border-bottom: ${(props) =>
-    props.border
-      ? `1px solid ${COLORS.borderDefault}`
-      : "none"}; /* Removed to avoid conflict with Home.tsx layout */
+  // border-bottom: 1px solid COLORS.borderDefault; /* Removed to avoid conflict with Home.tsx layout */
   /* Styles for internal layout can remain or be added here if necessary,
      e.g., padding for content within this container if not handled by child elements.
      For now, ensuring it fits well within CashierActionsArea. */

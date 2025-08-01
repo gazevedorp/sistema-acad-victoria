@@ -14,14 +14,14 @@ export const userModalSchema = (isEditing: boolean) => yup.object().shape({
   nome: yup.string().required('Nome é obrigatório.'),
   email: yup.string().email('Email inválido.').required('Email é obrigatório.'),
   telefone: yup.string().required('Telefone é obrigatório.'),
-  // Conditionally require senha and confirmarSenha only if not editing (i.e., creating)
-  senha: yup.string().when([], { // No direct dependency, but allows conditional logic
+  // Senha: obrigatória no CREATE, opcional no EDIT (mas se preenchida, deve ter min 6 chars)
+  senha: yup.string().when([], {
     is: () => !isEditing,
     then: (schema) => schema.required('Senha é obrigatória.').min(6, 'Senha deve ter no mínimo 6 caracteres.'),
-    otherwise: (schema) => schema.notRequired(),
+    otherwise: (schema) => schema.min(6, 'Senha deve ter no mínimo 6 caracteres.').notRequired(),
   }),
-  confirmarSenha: yup.string().when('senha', { // Depends on 'senha' field
-     is: (senhaField: string | undefined) => !isEditing && !!senhaField, // Only validate if not editing and senha is present
+  confirmarSenha: yup.string().when('senha', {
+     is: (senhaField: string | undefined) => !!senhaField && senhaField.length > 0, // Validar se senha foi preenchida
      then: (schema) => schema.required('Confirmação de senha é obrigatória.')
                           .oneOf([yup.ref('senha')], 'As senhas não conferem.'),
      otherwise: (schema) => schema.notRequired(),

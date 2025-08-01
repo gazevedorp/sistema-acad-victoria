@@ -31,6 +31,7 @@ export interface DefaultTableProps<T> {
   onEdit?(row: T): void;
   onDelete?(row: T): void;
   noDelete?: boolean;
+  onRowClick?(row: T): void;
 }
 
 function DefaultTable<T extends Record<string, any>>(
@@ -49,6 +50,7 @@ function DefaultTable<T extends Record<string, any>>(
     onEdit,
     onDelete,
     noDelete = false,
+    onRowClick,
   } = props;
 
   const [openRowId, setOpenRowId] = useState<string>("");
@@ -244,7 +246,11 @@ function DefaultTable<T extends Record<string, any>>(
         </Styles.TableHeader>
         <Styles.TableBody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id}>
+            <tr 
+              key={row.id}
+              onClick={() => onRowClick?.(row.original)}
+              style={{ cursor: onRowClick ? 'pointer' : 'default' }}
+            >
               {row.getVisibleCells().map((cell) => (
                 <Styles.Td
                   key={cell.id}

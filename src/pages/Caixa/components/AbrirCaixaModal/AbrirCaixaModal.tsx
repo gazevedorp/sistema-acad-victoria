@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Styles from "./AbrirCaixaModal.styles";
 import {
@@ -28,24 +28,24 @@ const AbrirCaixaModal: React.FC<AbrirCaixaModalProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<AbrirCaixaFormData>({
+  } = useForm({
     resolver: yupResolver(abrirCaixaSchema),
     defaultValues: {
-      valorInicial: 0.0,
-      observacoesAbertura: "",
+      valor_inicial: 0.0,
+      observacoes_abertura: null,
     },
   });
 
   useEffect(() => {
     if (open) {
-      reset({ valorInicial: 0.0, observacoesAbertura: "" });
+      reset({ valor_inicial: 0.0, observacoes_abertura: null });
     }
   }, [open, reset]);
 
-  const onSubmit: SubmitHandler<AbrirCaixaFormData> = async (data) => {
+  const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      await onAbrirCaixa(data);
+      await onAbrirCaixa(data as AbrirCaixaFormData);
       // O onClose pode ser chamado pelo componente pai após o sucesso de onAbrirCaixa
     } catch (error) {
       console.error("Erro ao submeter abertura de caixa", error);
@@ -69,33 +69,33 @@ const AbrirCaixaModal: React.FC<AbrirCaixaModalProps> = ({
         <Styles.ModalBody>
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
-              <Styles.Label htmlFor="valorInicial">
+              <Styles.Label htmlFor="valor_inicial">
                 Valor Inicial (R$)
               </Styles.Label>
               <Styles.Input
                 type="number"
-                id="valorInicial"
+                id="valor_inicial"
                 step="0.01"
                 min="0"
-                {...register("valorInicial")}
+                {...register("valor_inicial")}
                 placeholder="0.00"
               />
-              {errors.valorInicial && (
-                <Styles.ErrorMsg>{errors.valorInicial.message}</Styles.ErrorMsg>
+              {errors.valor_inicial && (
+                <Styles.ErrorMsg>{errors.valor_inicial.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
             <Styles.FormGroup>
-              <Styles.Label htmlFor="observacoesAbertura">
+              <Styles.Label htmlFor="observacoes_abertura">
                 Observações (Opcional)
               </Styles.Label>
               <Styles.Textarea
-                id="observacoesAbertura"
-                {...register("observacoesAbertura")}
+                id="observacoes_abertura"
+                {...register("observacoes_abertura")}
                 rows={3}
               />
-              {errors.observacoesAbertura && (
+              {errors.observacoes_abertura && (
                 <Styles.ErrorMsg>
-                  {errors.observacoesAbertura.message}
+                  {errors.observacoes_abertura.message}
                 </Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
@@ -108,7 +108,7 @@ const AbrirCaixaModal: React.FC<AbrirCaixaModalProps> = ({
                 Cancelar
               </Styles.SecondaryButton>
               <Styles.PrimaryButton type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader size={20} /> : "Abrir Caixa"}
+                {isSubmitting ? <Loader /> : "Abrir Caixa"}
               </Styles.PrimaryButton>
             </Styles.ButtonContainer>
           </Styles.Form>

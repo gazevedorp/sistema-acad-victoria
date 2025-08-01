@@ -36,6 +36,16 @@ export const Th = styled.th`
 export const TableBody = styled.tbody`
   tr {
     border-bottom: 1px solid #eee;
+    
+    &:hover {
+      background-color: #f8f9fa;
+    }
+    
+    &[style*="cursor: pointer"]:hover {
+      background-color: #e8f4f8;
+      transform: translateY(-1px);
+      transition: all 0.2s ease;
+    }
   }
 `;
 

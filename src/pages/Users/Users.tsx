@@ -9,7 +9,7 @@ import { SistemUser } from "../../types/UserType";
 import UserModal from "./components/UserModal/UserModal"; // Will be created
 import { UserModalFormData } from "./components/UserModal/UserModal.definitions"; // Will be created
 import ActionsMenu from "../../components/ActionMenu/ActionMenu";
-import { FaEdit, FaPlus, FaTrash } from "react-icons/fa"; // FaTrash for potential future use
+import { FaPlus } from "react-icons/fa";
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<SistemUser[]>([]);
@@ -58,6 +58,11 @@ const Users: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // Handler for row clicks - opens the modal with user data populated
+  const handleUserRowClick = useCallback((user: SistemUser) => {
+    handleOpenEditModal(user);
+  }, []);
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
@@ -68,15 +73,29 @@ const Users: React.FC = () => {
     setIsLoading(true);
     try {
       if (userId && editingUser) { // Editing existing user
+        const updateData: any = {
+          nome: formData.nome,
+          email: formData.email,
+          telefone: formData.telefone,
+          permissao: formData.permissao,
+          ativo: formData.ativo,
+        };
+
+        // Se uma nova senha foi fornecida, atualizar a senha do usuário
+        if (formData.senha && formData.senha.trim() !== '') {
+          const { error: passwordError } = await supabase.auth.updateUser({
+            password: formData.senha
+          });
+
+          if (passwordError) {
+            toast.error(`Erro ao atualizar senha: ${passwordError.message}`);
+            throw passwordError;
+          }
+        }
+
         const { error: updateError } = await supabase
           .from("usuarios")
-          .update({
-            nome: formData.nome,
-            email: formData.email, // Consider implications if this is also the auth email
-            telefone: formData.telefone,
-            permissao: formData.permissao,
-            ativo: formData.ativo,
-          })
+          .update(updateData)
           .eq("id", userId);
 
         if (updateError) {
@@ -152,18 +171,20 @@ const Users: React.FC = () => {
         field: "actions",
         header: "Ações",
         render: (user) => (
-          <ActionsMenu<SistemUser>
-            rowValue={user}
-            isOpen={currentActiveRowMenu === user.id}
-            onToggle={() => onSetActiveRowMenu(currentActiveRowMenu === user.id ? null : user.id)}
-            onClose={() => onSetActiveRowMenu(null)}
-            onEdit={() => {
-              onEdit(user);
-              onSetActiveRowMenu(null);
-            }}
-            // Add onDelete prop and handler when delete is implemented
-            noDelete={true} // No delete for now
-          />
+          <div onClick={(e) => e.stopPropagation()}> {/* Prevent row click when clicking action buttons */}
+            <ActionsMenu<SistemUser>
+              rowValue={user}
+              isOpen={currentActiveRowMenu === user.id}
+              onToggle={() => onSetActiveRowMenu(currentActiveRowMenu === user.id ? null : user.id)}
+              onClose={() => onSetActiveRowMenu(null)}
+              onEdit={() => {
+                onEdit(user);
+                onSetActiveRowMenu(null);
+              }}
+              // Add onDelete prop and handler when delete is implemented
+              noDelete={true} // No delete for now
+            />
+          </div>
         ),
       },
     ];
@@ -217,6 +238,7 @@ const Users: React.FC = () => {
             totalRows={totalRows}
             onPageChange={setCurrentPage}
             onRowsPerPageChange={setRowsPerPage}
+            onRowClick={handleUserRowClick}
           />
         </>
       )}

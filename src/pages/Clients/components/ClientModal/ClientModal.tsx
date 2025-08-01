@@ -14,6 +14,8 @@ import {
 } from "./ClientModal.definitions";
 import { supabase } from "../../../../lib/supabase";
 import MatriculaForm from "../MatriculaForm/MatriculaForm";
+import ListaPresencas from "../ListaPresencas/ListaPresencas";
+import ListaFaturas from "../ListaFaturas/ListaFaturas";
 
 interface ClientModalProps extends BaseModalProps {
   initialData?: Partial<DadosCadastraisFormData>;
@@ -35,9 +37,18 @@ const ClientModal: React.FC<ClientModalProps> = ({
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const isEditMode = mode === ModalMode.EDIT;
+  const isCreateMode = mode === ModalMode.CREATE;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [modalType, setmodalType] = useState("dados_cadastrais");
+  const [activeTab, setActiveTab] = useState("dados_cadastrais");
   const [alunoNome, setAlunoNome] = useState<string>("");
+
+  // Tabs configuration
+  const tabs = [
+    { id: "dados_cadastrais", label: "Dados Cadastrais", enabled: true },
+    { id: "matricula", label: "Dados da Matrícula", enabled: !isCreateMode },
+    { id: "presencas", label: "Lista de Presenças", enabled: !isCreateMode },
+    { id: "faturas", label: "Lista de Faturas", enabled: !isCreateMode },
+  ];
 
   const defaultFormValues: DadosCadastraisFormData = useMemo(
     () => ({
@@ -239,7 +250,337 @@ const ClientModal: React.FC<ClientModalProps> = ({
     if (isEditMode) {
       setAlunoNome(initialData?.nome || "");
     }
-  }, []);
+  }, [isEditMode, initialData?.nome]);
+
+  const handleTabChange = (tabId: string) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab && tab.enabled) {
+      setActiveTab(tabId);
+    }
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "dados_cadastrais":
+        return (
+          //@ts-expect-error
+          <Styles.Form onSubmit={handleSubmit(onSubmit)}>
+            <Styles.FormGroup>
+              <Styles.Label htmlFor="nome">Nome Completo</Styles.Label>
+              <Styles.Input
+                id="nome"
+                {...register("nome")}
+                disabled={isViewMode}
+              />
+              {errors.nome && (
+                <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="cpf">CPF</Styles.Label>
+                <Styles.Input
+                  id="cpf"
+                  value={watchedCpf || ""}
+                  onChange={handleCpfChange}
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  disabled={isViewMode || (isEditMode && !!initialData?.cpf)}
+                />
+                {errors.cpf && (
+                  <Styles.ErrorMsg>{errors.cpf.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="rg">RG</Styles.Label>
+                <Styles.Input
+                  id="rg"
+                  {...register("rg")}
+                  disabled={isViewMode}
+                />
+                {errors.rg && (
+                  <Styles.ErrorMsg>{errors.rg.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="data_nascimento">
+                  Data de Nascimento
+                </Styles.Label>
+                <Styles.Input
+                  id="data_nascimento"
+                  type="date"
+                  {...register("data_nascimento")}
+                  disabled={isViewMode}
+                />
+                {errors.data_nascimento && (
+                  <Styles.ErrorMsg>
+                    {errors.data_nascimento.message}
+                  </Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="telefone">Telefone</Styles.Label>
+                <Styles.Input
+                  id="telefone"
+                  value={watchedTelefone || ""}
+                  onChange={handleTelefoneChange}
+                  maxLength={15}
+                  placeholder="(DDD) 9XXXX-XXXX"
+                  disabled={isViewMode}
+                />
+                {errors.telefone && (
+                  <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormGroup>
+              <Styles.Label htmlFor="email">E-mail</Styles.Label>
+              <Styles.Input
+                id="email"
+                type="email"
+                {...register("email")}
+                placeholder="email@exemplo.com"
+                disabled={isViewMode}
+              />
+              {errors.email && (
+                <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <hr style={{ margin: "20px 0 15px 0", borderColor: Styles.COLORS.borderDefault, borderWidth: "0.5px" }} />
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="cep">CEP</Styles.Label>
+                <Styles.Input
+                  id="cep"
+                  value={watchedCep || ""}
+                  onChange={handleCepChange}
+                  maxLength={9}
+                  placeholder="00000-000"
+                  disabled={isViewMode}
+                />
+                {errors.cep && (
+                  <Styles.ErrorMsg>{errors.cep.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup style={{ flexGrow: 2 }}>
+                <Styles.Label htmlFor="rua">Rua</Styles.Label>
+                <Styles.Input
+                  id="rua"
+                  {...register("rua")}
+                  disabled={isViewMode}
+                />
+                {errors.rua && (
+                  <Styles.ErrorMsg>{errors.rua.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="numero">Número</Styles.Label>
+                <Styles.Input
+                  id="numero"
+                  {...register("numero")}
+                  disabled={isViewMode}
+                />
+                {errors.numero && (
+                  <Styles.ErrorMsg>{errors.numero.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="complemento">Complemento</Styles.Label>
+                <Styles.Input
+                  id="complemento"
+                  {...register("complemento")}
+                  disabled={isViewMode}
+                />
+                {errors.complemento && (
+                  <Styles.ErrorMsg>{errors.complemento.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup style={{ flexGrow: 2 }}>
+                <Styles.Label htmlFor="bairro">Bairro</Styles.Label>
+                <Styles.Input
+                  id="bairro"
+                  {...register("bairro")}
+                  disabled={isViewMode}
+                />
+                {errors.bairro && (
+                  <Styles.ErrorMsg>{errors.bairro.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormRow>
+              <Styles.FormGroup style={{ flexGrow: 2 }}>
+                <Styles.Label htmlFor="cidade">Cidade</Styles.Label>
+                <Styles.Input
+                  id="cidade"
+                  {...register("cidade")}
+                  disabled={isViewMode}
+                />
+                {errors.cidade && (
+                  <Styles.ErrorMsg>{errors.cidade.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label htmlFor="estado">Estado (UF)</Styles.Label>
+                <Styles.Select
+                  id="estado"
+                  {...register("estado")}
+                  disabled={isViewMode}
+                >
+                  <option value="">UF</option>
+                  {UFs.map((uf) => (
+                    <option key={uf} value={uf}>
+                      {uf}
+                    </option>
+                  ))}
+                </Styles.Select>
+                {errors.estado && (
+                  <Styles.ErrorMsg>{errors.estado.message}</Styles.ErrorMsg>
+                )}
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <hr style={{ margin: "20px 0 15px 0", borderColor: Styles.COLORS.borderDefault, borderWidth: "0.5px" }} />
+
+            <Styles.FormGroup style={{ flexDirection: "row", alignItems: "center", gap: "8px", marginBottom: "15px" }}>
+              <input
+                type="checkbox"
+                id="possuiResponsavel"
+                {...register("possuiResponsavel")}
+                disabled={isViewMode}
+                style={{ width: "auto" }}
+              />
+              <Styles.Label htmlFor="possuiResponsavel" style={{ marginBottom: 0, fontWeight: "normal" }}>
+                Possui responsável?
+              </Styles.Label>
+            </Styles.FormGroup>
+
+            {watchedPossuiResponsavel && (
+              <>
+                <Styles.FormGroup>
+                  <Styles.Label htmlFor="responsavelNome">Nome do Responsável</Styles.Label>
+                  <Styles.Input
+                    id="responsavelNome"
+                    {...register("responsavelNome")}
+                    disabled={isViewMode}
+                  />
+                  {errors.responsavelNome && (
+                    <Styles.ErrorMsg>{errors.responsavelNome.message}</Styles.ErrorMsg>
+                  )}
+                </Styles.FormGroup>
+                <Styles.FormRow>
+                  <Styles.FormGroup>
+                    <Styles.Label htmlFor="responsavelCpf">CPF do Responsável</Styles.Label>
+                    <Styles.Input
+                      id="responsavelCpf"
+                      value={watchedResponsavelCpf || ""}
+                      onChange={handleResponsavelCpfChange}
+                      maxLength={14}
+                      placeholder="000.000.000-00"
+                      disabled={isViewMode}
+                    />
+                    {errors.responsavelCpf && (
+                      <Styles.ErrorMsg>{errors.responsavelCpf.message}</Styles.ErrorMsg>
+                    )}
+                  </Styles.FormGroup>
+                  <Styles.FormGroup>
+                    <Styles.Label htmlFor="responsavelTelefone">Telefone do Responsável</Styles.Label>
+                    <Styles.Input
+                      id="responsavelTelefone"
+                      value={watchedResponsavelTelefone || ""}
+                      onChange={handleResponsavelTelefoneChange}
+                      maxLength={15}
+                      placeholder="(DDD) 9XXXX-XXXX"
+                      disabled={isViewMode}
+                    />
+                    {errors.responsavelTelefone && (
+                      <Styles.ErrorMsg>{errors.responsavelTelefone.message}</Styles.ErrorMsg>
+                    )}
+                  </Styles.FormGroup>
+                </Styles.FormRow>
+                <Styles.FormGroup>
+                  <Styles.Label htmlFor="responsavelParentesco">Parentesco</Styles.Label>
+                  <Styles.Input
+                    id="responsavelParentesco"
+                    {...register("responsavelParentesco")}
+                    disabled={isViewMode}
+                  />
+                  {errors.responsavelParentesco && (
+                    <Styles.ErrorMsg>{errors.responsavelParentesco.message}</Styles.ErrorMsg>
+                  )}
+                </Styles.FormGroup>
+              </>
+            )}
+
+            {!isViewMode && (
+              <Styles.SubmitButtonContainer>
+                <Styles.SubmitButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <Loader />
+                  ) : mode === ModalMode.EDIT ? (
+                    "Salvar Alterações"
+                  ) : (
+                    "Salvar Dados Cadastrais"
+                  )}
+                </Styles.SubmitButton>
+              </Styles.SubmitButtonContainer>
+            )}
+          </Styles.Form>
+        );
+
+      case "matricula":
+        return alunoIdToEdit ? (
+          <MatriculaForm
+            mode={mode}
+            alunoId={alunoIdToEdit}
+            alunoName={alunoNome}
+            onSaveComplete={(error, savedData) => {
+              if (error) {
+                console.error("Erro ao salvar matrícula:", error);
+              } else {
+                console.log("Matrícula salva com sucesso:", savedData);
+              }
+            }}
+            onNavigateBack={() => setActiveTab("dados_cadastrais")}
+          />
+        ) : (
+          <div style={{ padding: '40px', textAlign: 'center', color: Styles.COLORS.textMuted }}>
+            É necessário salvar o aluno primeiro para fazer a matrícula.
+          </div>
+        );
+
+      case "presencas":
+        return alunoIdToEdit ? (
+          <ListaPresencas alunoId={alunoIdToEdit} alunoName={alunoNome} />
+        ) : (
+          <div style={{ padding: '40px', textAlign: 'center', color: Styles.COLORS.textMuted }}>
+            É necessário salvar o aluno primeiro para visualizar as presenças.
+          </div>
+        );
+
+      case "faturas":
+        return alunoIdToEdit ? (
+          <ListaFaturas alunoId={alunoIdToEdit} alunoName={alunoNome} />
+        ) : (
+          <div style={{ padding: '40px', textAlign: 'center', color: Styles.COLORS.textMuted }}>
+            É necessário salvar o aluno primeiro para visualizar as faturas.
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   if (!open) return null;
 
@@ -256,340 +597,23 @@ const ClientModal: React.FC<ClientModalProps> = ({
         </Styles.ModalHeader>
 
         <Styles.ModalBody>
-          {modalType === "dados_cadastrais" ? (
-            //@ts-expect-error
-            <Styles.Form onSubmit={handleSubmit(onSubmit)}>
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="nome">Nome Completo</Styles.Label>
-                <Styles.Input
-                  id="nome"
-                  {...register("nome")}
-                  disabled={isViewMode}
-                />
-                {errors.nome && (
-                  <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
-                )}
-              </Styles.FormGroup>
-
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="cpf">CPF</Styles.Label>
-                  <Styles.Input
-                    id="cpf"
-                    value={watchedCpf || ""}
-                    onChange={handleCpfChange}
-                    maxLength={14}
-                    placeholder="000.000.000-00"
-                    disabled={isViewMode || (isEditMode && !!initialData?.cpf)}
-                  />
-                  {errors.cpf && (
-                    <Styles.ErrorMsg>{errors.cpf.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="rg">RG</Styles.Label>
-                  <Styles.Input
-                    id="rg"
-                    {...register("rg")}
-                    disabled={isViewMode}
-                  />
-                  {errors.rg && (
-                    <Styles.ErrorMsg>{errors.rg.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-              </Styles.FormRow>
-
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="data_nascimento">
-                    Data de Nascimento
-                  </Styles.Label>
-                  <Styles.Input
-                    id="data_nascimento"
-                    type="date"
-                    {...register("data_nascimento")}
-                    disabled={isViewMode}
-                  />
-                  {errors.data_nascimento && (
-                    <Styles.ErrorMsg>
-                      {errors.data_nascimento.message}
-                    </Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="telefone">Telefone</Styles.Label>
-                  <Styles.Input
-                    id="telefone"
-                    value={watchedTelefone || ""}
-                    onChange={handleTelefoneChange}
-                    maxLength={15}
-                    placeholder="(DDD) 9XXXX-XXXX"
-                    disabled={isViewMode}
-                  />
-                  {errors.telefone && (
-                    <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-              </Styles.FormRow>
-
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="email">E-mail</Styles.Label>
-                <Styles.Input
-                  id="email"
-                  type="email"
-                  {...register("email")}
-                  placeholder="email@exemplo.com"
-                  disabled={isViewMode}
-                />
-                {errors.email && (
-                  <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
-                )}
-              </Styles.FormGroup>
-
-              <hr
-                style={{
-                  margin: "20px 0 15px 0",
-                  borderColor: Styles.COLORS.borderDefault,
-                  borderWidth: "0.5px",
-                }}
-              />
-
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="cep">CEP</Styles.Label>
-                  <Styles.Input
-                    id="cep"
-                    value={watchedCep || ""}
-                    onChange={handleCepChange}
-                    maxLength={9}
-                    placeholder="00000-000"
-                    disabled={isViewMode}
-                  />
-                  {errors.cep && (
-                    <Styles.ErrorMsg>{errors.cep.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup style={{ flexGrow: 2 }}>
-                  <Styles.Label htmlFor="rua">Rua</Styles.Label>
-                  <Styles.Input
-                    id="rua"
-                    {...register("rua")}
-                    disabled={isViewMode}
-                  />
-                  {errors.rua && (
-                    <Styles.ErrorMsg>{errors.rua.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-              </Styles.FormRow>
-
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="numero">Número</Styles.Label>
-                  <Styles.Input
-                    id="numero"
-                    {...register("numero")}
-                    disabled={isViewMode}
-                  />
-                  {errors.numero && (
-                    <Styles.ErrorMsg>{errors.numero.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="complemento">Complemento</Styles.Label>
-                  <Styles.Input
-                    id="complemento"
-                    {...register("complemento")}
-                    disabled={isViewMode}
-                  />
-                  {errors.complemento && (
-                    <Styles.ErrorMsg>
-                      {errors.complemento.message}
-                    </Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup style={{ flexGrow: 2 }}>
-                  <Styles.Label htmlFor="bairro">Bairro</Styles.Label>
-                  <Styles.Input
-                    id="bairro"
-                    {...register("bairro")}
-                    disabled={isViewMode}
-                  />
-                  {errors.bairro && (
-                    <Styles.ErrorMsg>{errors.bairro.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-              </Styles.FormRow>
-
-              <Styles.FormRow>
-                <Styles.FormGroup style={{ flexGrow: 2 }}>
-                  <Styles.Label htmlFor="cidade">Cidade</Styles.Label>
-                  <Styles.Input
-                    id="cidade"
-                    {...register("cidade")}
-                    disabled={isViewMode}
-                  />
-                  {errors.cidade && (
-                    <Styles.ErrorMsg>{errors.cidade.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="estado">Estado (UF)</Styles.Label>
-                  <Styles.Select
-                    id="estado"
-                    {...register("estado")}
-                    disabled={isViewMode}
-                  >
-                    <option value="">UF</option>
-                    {UFs.map((uf) => (
-                      <option key={uf} value={uf}>
-                        {uf}
-                      </option>
-                    ))}
-                  </Styles.Select>
-                  {errors.estado && (
-                    <Styles.ErrorMsg>{errors.estado.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-              </Styles.FormRow>
-
-              <hr
-                style={{
-                  margin: "20px 0 15px 0",
-                  borderColor: Styles.COLORS.borderDefault,
-                  borderWidth: "0.5px",
-                }}
-              />
-
-              <Styles.FormGroup
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: "15px",
-                }}
+          {/* Tab Navigation */}
+          <Styles.TabContainer>
+            {tabs.map((tab) => (
+              <Styles.Tab
+                key={tab.id}
+                $active={activeTab === tab.id}
+                $disabled={!tab.enabled}
+                onClick={() => handleTabChange(tab.id)}
+                disabled={!tab.enabled}
               >
-                <input
-                  type="checkbox"
-                  id="possuiResponsavel"
-                  {...register("possuiResponsavel")}
-                  disabled={isViewMode}
-                  style={{ width: "auto" }}
-                />
-                <Styles.Label
-                  htmlFor="possuiResponsavel"
-                  style={{ marginBottom: 0, fontWeight: "normal" }}
-                >
-                  Possui responsável?
-                </Styles.Label>
-              </Styles.FormGroup>
+                {tab.label}
+              </Styles.Tab>
+            ))}
+          </Styles.TabContainer>
 
-              {watchedPossuiResponsavel && (
-                <>
-                  <Styles.FormGroup>
-                    <Styles.Label htmlFor="responsavelNome">
-                      Nome do Responsável
-                    </Styles.Label>
-                    <Styles.Input
-                      id="responsavelNome"
-                      {...register("responsavelNome")}
-                      disabled={isViewMode}
-                    />
-                    {errors.responsavelNome && (
-                      <Styles.ErrorMsg>
-                        {errors.responsavelNome.message}
-                      </Styles.ErrorMsg>
-                    )}
-                  </Styles.FormGroup>
-                  <Styles.FormRow>
-                    <Styles.FormGroup>
-                      <Styles.Label htmlFor="responsavelCpf">
-                        CPF do Responsável
-                      </Styles.Label>
-                      <Styles.Input
-                        id="responsavelCpf"
-                        value={watchedResponsavelCpf || ""}
-                        onChange={handleResponsavelCpfChange}
-                        maxLength={14}
-                        placeholder="000.000.000-00"
-                        disabled={isViewMode}
-                      />
-                      {errors.responsavelCpf && (
-                        <Styles.ErrorMsg>
-                          {errors.responsavelCpf.message}
-                        </Styles.ErrorMsg>
-                      )}
-                    </Styles.FormGroup>
-                    <Styles.FormGroup>
-                      <Styles.Label htmlFor="responsavelTelefone">
-                        Telefone do Responsável
-                      </Styles.Label>
-                      <Styles.Input
-                        id="responsavelTelefone"
-                        value={watchedResponsavelTelefone || ""}
-                        onChange={handleResponsavelTelefoneChange}
-                        maxLength={15}
-                        placeholder="(DDD) 9XXXX-XXXX"
-                        disabled={isViewMode}
-                      />
-                      {errors.responsavelTelefone && (
-                        <Styles.ErrorMsg>
-                          {errors.responsavelTelefone.message}
-                        </Styles.ErrorMsg>
-                      )}
-                    </Styles.FormGroup>
-                  </Styles.FormRow>
-                  <Styles.FormGroup>
-                    <Styles.Label htmlFor="responsavelParentesco">
-                      Parentesco
-                    </Styles.Label>
-                    <Styles.Input
-                      id="responsavelParentesco"
-                      {...register("responsavelParentesco")}
-                      disabled={isViewMode}
-                    />
-                    {errors.responsavelParentesco && (
-                      <Styles.ErrorMsg>
-                        {errors.responsavelParentesco.message}
-                      </Styles.ErrorMsg>
-                    )}
-                  </Styles.FormGroup>
-                </>
-              )}
-
-              {!isViewMode && (
-                <Styles.SubmitButtonContainer>
-                  <Styles.SubmitButton
-                    disabled={mode !== ModalMode.EDIT}
-                    onClick={() => setmodalType("matricula")}
-                    type="button"
-                    style={{
-                      backgroundColor: Styles.COLORS.textMuted,
-                    }}
-                  >
-                    Matricula
-                  </Styles.SubmitButton>
-                  <Styles.SubmitButton type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader />
-                    ) : mode === ModalMode.EDIT ? (
-                      "Salvar Alterações"
-                    ) : (
-                      "Salvar Dados Cadastrais"
-                    )}
-                  </Styles.SubmitButton>
-                </Styles.SubmitButtonContainer>
-              )}
-            </Styles.Form>
-          ) : (
-            <MatriculaForm
-              //@ts-expect-error
-              mode={ModalMode}
-              //@ts-expect-error
-              alunoId={alunoIdToEdit}
-              alunoName={alunoNome}
-              onNavigateBack={() => setmodalType("dados_cadastrais")}
-            />
-          )}
+          {/* Tab Content */}
+          {renderTabContent()}
         </Styles.ModalBody>
       </Styles.ModalContainer>
     </Styles.ModalOverlay>

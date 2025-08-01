@@ -12,6 +12,7 @@ import Plans from "../pages/Planos/Planos";
 // import Caixa from "../pages/Caixa/Caixa";
 import ManageCaixas from "../pages/ManageCaixas/ManageCaixas";
 import Users from "../pages/Users/Users"; // Added import for Users page
+import FechamentoCaixaTemplate from "../pages/FechamentoCaixaTemplate/FechamentoCaixaTemplate";
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -41,6 +42,7 @@ const AppRoutes: React.FC = () => {
           {/* <Route path="caixa" element={<Caixa />} /> */}
           {isAdmin && <Route path="caixas" element={<ManageCaixas />} />}
           {isAdmin && <Route path="users" element={<Users />} />}
+          {isAdmin && <Route path="templates-fechamento" element={<FechamentoCaixaTemplate />} />}
           {/* Added route for Users */}
         </Route>
 

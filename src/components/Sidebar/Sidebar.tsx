@@ -10,6 +10,7 @@ import {
   FiTable,
   FiFile,
   FiArchive,
+  FiSettings,
 } from "react-icons/fi";
 import { FaUserFriends } from "react-icons/fa";
 import { useAuthStore } from "../../store/authStore";
@@ -51,19 +52,26 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
       { icon: <FiTable />, text: "Turmas", route: "/turmas" },
       { icon: <FiFile />, text: "Planos", route: "/planos" },
       { icon: <FiPackage />, text: "Produtos", route: "/products" },
-      isAdmin && {
-        icon: <FaUserFriends />,
-        text: "Usuários",
-        route: "/users",
-      }, // Added Users link
-      isAdmin && {
-        icon: <FiArchive />,
-        text: "Caixas",
-        route: "/caixas",
-      }, // Added new menu item
+      ...(isAdmin ? [
+        {
+          icon: <FaUserFriends />,
+          text: "Usuários",
+          route: "/users",
+        }, // Added Users link
+        {
+          icon: <FiArchive />,
+          text: "Caixas",
+          route: "/caixas",
+        }, // Added new menu item
+        {
+          icon: <FiSettings />,
+          text: "Templates",
+          route: "/templates-fechamento",
+        },
+      ] : []),
       // { icon: <FiBarChart2 />, text: "Relatorios", route: "/relatorios" },
     ],
-    []
+    [isAdmin]
   );
 
   const handleLogout = useCallback(async () => {

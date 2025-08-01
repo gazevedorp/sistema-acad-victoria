@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 import TransactionHistoryModal from '../TransactionHistoryModal/TransactionHistoryModal'; // Import the new modal
 import CaixaModal from "../../../Caixa/components/CaixaModal/CaixaModal";
@@ -21,7 +20,7 @@ import AbrirCaixaModal from "../../../Caixa/components/AbrirCaixaModal/AbrirCaix
 import { AbrirCaixaFormData } from "../../../Caixa/components/AbrirCaixaModal/AbrirCaixaModal.definitions";
 import FecharCaixaModal from "../../../Caixa/components/FecharCaixaModal/FecharCaixaModal";
 import { FecharCaixaFormData } from "../../../Caixa/components/FecharCaixaModal/FecharCaixaModal.definitions";
-import { Client } from "../../../../types/ClientTypes"; // For AlunoParaSelect if it uses Client type directly
+import { useFechamentoCaixaTemplateStore } from "../../../../store/fechamentoCaixaTemplateStore";
 
 // --- TYPE DEFINITIONS (Copied from Home.tsx, can be refined or moved to specific type files later) ---
 export interface ActiveCaixa { // Exporting if Home needs this type for its state
@@ -69,9 +68,9 @@ interface CashierSectionProps {
 }
 
 const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCaixaUpdate, onRequestSummaryRefresh }) => {
+  const { templateAtivo } = useFechamentoCaixaTemplateStore();
   const [activeCaixaDetails, setActiveCaixaDetails] = useState<ActiveCaixa | null>(null);
-  const [caixaMovimentacoes, setCaixaMovimentacoes] = useState<FinanceiroItem[]>([]);
-  const [isCaixaLoading, setIsCaixaLoading] = useState<boolean>(true); // Initial loading for caixa details and movs
+
   const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
   const [showAbrirCaixaModal, setShowAbrirCaixaModal] = useState(false);
   const [showFecharCaixaModal, setShowFecharCaixaModal] = useState(false);
@@ -87,7 +86,6 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
       onActiveCaixaUpdate(null);
       return;
     }
-    setIsCaixaLoading(true); // For initial check
     try {
       const { data, error } = await supabase.from("caixas").select("id, usuario_id, valor_inicial, data_abertura, observacoes_abertura")
         .eq("usuario_id", user.id).eq("status", "aberto").maybeSingle();
@@ -106,32 +104,11 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
       setActiveCaixaDetails(null);
       onActiveCaixaUpdate(null);
     }
-    // Note: setIsCaixaLoading(false) will be handled by fetchCaixaMovimentacoes
   }, [onActiveCaixaUpdate]);
 
-  const fetchCaixaMovimentacoes = useCallback(async (caixaId?: string | null) => {
-    setIsCaixaLoading(true);
-    try {
-      if (!caixaId) {
-        setCaixaMovimentacoes([]);
-        return;
-      }
-      const { data, error } = await supabase.from("financeiro").select("*, clientes:cliente_id(nome), produtos:produto_id(nome)")
-        .eq("caixa_id", caixaId).order("created_at", { ascending: false });
-      if (error) {
-        toast.error("Erro ao buscar movimentações do caixa.");
-        console.error("Error fetching caixa movimentacoes:", error);
-        setCaixaMovimentacoes([]);
-      } else if (data) {
-        setCaixaMovimentacoes(data.map(i => ({ ...i, cliente_nome: (i.clientes as any)?.nome, produto_nome: (i.produtos as any)?.nome })) as FinanceiroItem[]);
-      }
-    } catch (err) {
-      toast.error("Erro inesperado ao buscar movimentações.");
-      console.error("Unexpected error fetching movimentacoes:", err);
-      setCaixaMovimentacoes([]);
-    } finally {
-      setIsCaixaLoading(false);
-    }
+  const fetchCaixaMovimentacoes = useCallback(async (_caixaId?: string | null) => {
+    // This function is kept for compatibility but doesn't store data locally anymore
+    return;
   }, []);
 
   const fetchDadosParaCaixaSelects = useCallback(async () => {
@@ -224,7 +201,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({ currentUser, onActiveCa
   };
 
 const generatePDFFechamentoCaixa = (
-    caixaInfo: ActiveCaixa & { data_fechamento?: string }, // Adicionado data_fechamento aqui
+    caixaInfo: ActiveCaixa & { data_fechamento?: string },
     transacoes: FinanceiroItem[],
     totais: { entradas: number; saidas: number; saldo: number },
     observacoesFechamento?: string
@@ -235,301 +212,236 @@ const generatePDFFechamentoCaixa = (
       format: "a4",
     });
 
+    const template = templateAtivo;
     const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight(); // Para o rodapé
-    const margin = 15;
-    const contentWidth = pageWidth - 2 * margin;
-    let currentY = 20;
-    const lineHeight = 6; // Altura da linha para texto normal
-    const smallLineHeight = 5;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    // Layout minimalista - margens menores para aproveitar melhor a página
+    const margin = 10;
+    let currentY = 15;
+    const lineHeight = 5;
     const sectionSpacing = 8;
 
-    // Cabeçalho Principal
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("ACADEMIA VICTÓRIA", pageWidth / 2, currentY, { align: "center" });
-    currentY += lineHeight * 1.5;
-
+    // Configurar fonte padrão
     doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    const dataCaixaFechado = caixaInfo.data_fechamento
-      ? new Date(caixaInfo.data_fechamento).toLocaleDateString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-        })
-      : new Date().toLocaleDateString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-        });
-    doc.text(
-      `Relatório de Movimentação de Caixa do dia ${dataCaixaFechado}`,
-      pageWidth / 2,
-      currentY,
-      { align: "center" }
-    );
-    currentY += sectionSpacing * 1.5;
+    doc.setTextColor("#000000");
 
-    // Seção de Resumo do Fechamento (Duas Colunas)
-    doc.setFontSize(10);
-    const col1X = margin;
-    const col2X = margin + contentWidth / 2 + 5; // Ponto de início da segunda coluna
-    const labelColWidth = 35; // Largura para os rótulos
-
-    const addSummaryLine = (
-      labelCol1: string,
-      valueCol1: string,
-      labelCol2: string,
-      valueCol2: string
-    ) => {
+    // === CABEÇALHO ===
+    if (template.informacoes.titulo) {
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text(labelCol1, col1X, currentY);
-      doc.setFont("helvetica", "normal");
-      doc.text(valueCol1, col1X + labelColWidth, currentY);
-
-      doc.setFont("helvetica", "bold");
-      doc.text(labelCol2, col2X, currentY);
-      doc.setFont("helvetica", "normal");
-      doc.text(valueCol2, col2X + labelColWidth, currentY);
-      currentY += lineHeight;
-    };
-
-    const fechamentoNumero = `Nº: ${caixaInfo.id
-      .substring(0, 8)
-      .toUpperCase()}`;
-    const dataAberturaFormatada = caixaInfo.data_abertura
-      ? new Date(caixaInfo.data_abertura).toLocaleString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-          hour12: false,
-        })
-      : "N/A";
-    const dataFechamentoFormatada = caixaInfo.data_fechamento
-      ? new Date(caixaInfo.data_fechamento).toLocaleString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-          hour12: false,
-        })
-      : new Date().toLocaleString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-          hour12: false,
-        });
-    const valorInicialFormatado = Number(
-      caixaInfo.valor_inicial || 0
-    ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const totalRecebidoFormatado = totais.entradas.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-    const valorRetiradoFormatado = totais.saidas.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-    const valorAdicionadoFormatado = (
-      totais.entradas - totais.saidas
-    ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const saldoFinalFormatado = totais.saldo.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-
-    addSummaryLine(
-      "Fechamento:",
-      fechamentoNumero,
-      "Funcionário:",
-      currentUser?.email || "N/A"
-    );
-    addSummaryLine(
-      "Hora Inicial:",
-      dataAberturaFormatada.split(" ")[1] || "",
-      "Dt. Fechamento:",
-      dataFechamentoFormatada.split(" ")[0] || ""
-    );
-    addSummaryLine(
-      "Valor Inicial:",
-      valorInicialFormatado,
-      "Hora Final:",
-      dataFechamentoFormatada.split(" ")[1] || ""
-    );
-    currentY += smallLineHeight; // Espaço extra antes das observações
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Observações Abertura:", col1X, currentY);
-    doc.setFont("helvetica", "normal");
-    currentY += smallLineHeight;
-    const obsAberturaLines = doc.splitTextToSize(
-      caixaInfo.observacoes_abertura || "-",
-      contentWidth
-    );
-    doc.text(obsAberturaLines, col1X, currentY);
-    currentY += obsAberturaLines.length * smallLineHeight + 2;
-
-    if (observacoesFechamento) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Observações Fechamento:", col1X, currentY);
-      doc.setFont("helvetica", "normal");
-      currentY += smallLineHeight;
-      const obsFechamentoLines = doc.splitTextToSize(
-        observacoesFechamento,
-        contentWidth
-      );
-      doc.text(obsFechamentoLines, col1X, currentY);
-      currentY += obsFechamentoLines.length * smallLineHeight;
+      doc.text(template.informacoes.titulo, pageWidth / 2, currentY, { align: "center" });
+      currentY += lineHeight + 2;
     }
-    currentY += smallLineHeight; // Espaço extra
 
-    addSummaryLine(
-      "Total Recebido:",
-      totalRecebidoFormatado,
-      "Val. Adicionado:",
-      "R$ 0,00"
-    );
-    addSummaryLine(
-      "Val. Retirado:",
-      valorRetiradoFormatado,
-      "Valor Próx. Caixa:",
-      saldoFinalFormatado
-    );
-    addSummaryLine(
-      "Valor Fechado:",
-      saldoFinalFormatado,
-      "Valor LEVADO:",
-      saldoFinalFormatado
-    ); // "Valor Levado" igual ao fechado por enquanto
+    if (template.informacoes.subtitulo) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(template.informacoes.subtitulo, pageWidth / 2, currentY, { align: "center" });
+      currentY += lineHeight;
+    }
 
-    currentY += lineHeight / 2;
-    doc.setDrawColor(180, 180, 180); // Cinza para a linha
-    doc.line(margin, currentY, pageWidth - margin, currentY); // Linha horizontal
-    currentY += sectionSpacing;
+    // Informações do cabeçalho em linha
+    const headerInfo = [];
+    if (template.informacoes.mostrarData) {
+      const dataFormatada = caixaInfo.data_fechamento
+        ? new Date(caixaInfo.data_fechamento).toLocaleDateString("pt-BR")
+        : new Date().toLocaleDateString("pt-BR");
+      headerInfo.push(`Data: ${dataFormatada}`);
+    }
+    if (template.informacoes.mostrarUsuario && currentUser) {
+      headerInfo.push(`Usuário: ${currentUser.email}`);
+    }
+    
+    if (headerInfo.length > 0) {
+      doc.setFontSize(10);
+      doc.text(headerInfo.join(" | "), pageWidth / 2, currentY, { align: "center" });
+      currentY += lineHeight + sectionSpacing;
+    }
 
-    // Seção de Detalhes dos Valores Recebidos (ou Todas as Movimentações)
+    // === RESUMO DO CAIXA ===
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("DETALHES DAS MOVIMENTAÇÕES", pageWidth / 2, currentY, {
-      align: "center",
+    doc.text("RESUMO DO CAIXA", margin, currentY);
+    currentY += lineHeight + 2;
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    
+    const resumoInfo = [];
+    if (template.informacoes.mostrarNumeroCaixa) {
+      resumoInfo.push(`Caixa: ${caixaInfo.id.substring(0, 8).toUpperCase()}`);
+    }
+    if (template.informacoes.mostrarDataAbertura) {
+      const dataAbertura = new Date(caixaInfo.data_abertura).toLocaleString("pt-BR", { hour12: false });
+      resumoInfo.push(`Abertura: ${dataAbertura}`);
+    }
+    if (template.informacoes.mostrarDataFechamento) {
+      const dataFechamento = caixaInfo.data_fechamento
+        ? new Date(caixaInfo.data_fechamento).toLocaleString("pt-BR", { hour12: false })
+        : new Date().toLocaleString("pt-BR", { hour12: false });
+      resumoInfo.push(`Fechamento: ${dataFechamento}`);
+    }
+    if (template.informacoes.mostrarValorInicial) {
+      resumoInfo.push(`Valor Inicial: ${Number(caixaInfo.valor_inicial || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`);
+    }
+    
+    resumoInfo.forEach(info => {
+      doc.text(info, margin, currentY);
+      currentY += lineHeight;
     });
+    
+    if (template.informacoes.mostrarObservacoesAbertura && caixaInfo.observacoes_abertura) {
+      doc.text(`Obs. Abertura: ${caixaInfo.observacoes_abertura}`, margin, currentY);
+      currentY += lineHeight;
+    }
+    
     currentY += sectionSpacing;
 
-    doc.setFontSize(9);
-    if (transacoes.length > 0) {
+    // === MOVIMENTAÇÕES ===
+    if (template.informacoes.mostrarMovimentacoes && transacoes.length > 0) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("MOVIMENTAÇÕES", margin, currentY);
+      currentY += lineHeight + 2;
+      
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      
       transacoes.forEach((item, index) => {
-        if (currentY > pageHeight - 30) {
-          // Checa espaço para o rodapé e próxima transação
+        if (currentY > pageHeight - 25) {
           doc.addPage();
           currentY = margin;
         }
 
-        let descPrincipal = "";
-        let linhaCpf = "";
-        let linhaDescEspecifica = `Descrição: ${item.descricao || "-"}`;
-        const valorItemFormatado = Number(item.valor).toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
+        // Criar linha única com as informações
+        const movimentacaoInfo = [];
+        
+        if (template.informacoes.mostrarTipoMovimentacao) {
+          let tipoDesc = "";
+          switch (item.tipo) {
+            case "pagamento": tipoDesc = "PAGAMENTO"; break;
+            case "venda": tipoDesc = "VENDA"; break;
+            case "saida": tipoDesc = "SAÍDA"; break;
+            default: tipoDesc = item.tipo.toUpperCase();
+          }
+          movimentacaoInfo.push(tipoDesc);
+        }
+        
+        if (template.informacoes.mostrarDescricao && item.descricao) {
+          movimentacaoInfo.push(item.descricao);
+        }
+        
+        if (template.informacoes.mostrarClienteNome && item.cliente_nome) {
+          movimentacaoInfo.push(`Cliente: ${item.cliente_nome}`);
+        }
+        
+        if (template.informacoes.mostrarProdutoNome && item.produto_nome) {
+          movimentacaoInfo.push(`Produto: ${item.produto_nome}`);
+        }
+        
+        if (template.informacoes.mostrarFormaPagamento) {
+          movimentacaoInfo.push(item.forma_pagamento);
+        }
+        
+        if (template.informacoes.mostrarValor) {
+          movimentacaoInfo.push(Number(item.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+        }
+
+        // Montar a linha completa
+        const linhaCompleta = movimentacaoInfo.join(" | ");
+        
+        // Verificar se a linha cabe na página, se não quebrar
+        const linhasQuebradas = doc.splitTextToSize(linhaCompleta, pageWidth - 2 * margin);
+        linhasQuebradas.forEach((linha: string) => {
+          if (currentY > pageHeight - 25) {
+            doc.addPage();
+            currentY = margin;
+          }
+          doc.text(`${index + 1}. ${linha}`, margin, currentY);
+          currentY += lineHeight;
         });
-
-        // Formata o tipo de transação e busca nomes
-        switch (item.tipo) {
-          case "pagamento":
-            descPrincipal = `MENSALIDADE`;
-            if (item.cliente_cpf) linhaCpf = `CPF: ${item.cliente_cpf}`;
-            break;
-          case "venda":
-            descPrincipal = `VENDA DE PRODUTO(S)`;
-            // Poderia adicionar cliente se venda for associada a cliente
-            // linhaCpf = ... (se aplicável e tiver CPF do cliente da venda)
-            break;
-          case "saida":
-            descPrincipal = `SAÍDA DE CAIXA`;
-            break;
-          default:
-            descPrincipal = item.tipo.toUpperCase();
-        }
-
-        doc.setFont("helvetica", "bold");
-        doc.text(descPrincipal, margin, currentY);
-        currentY += smallLineHeight;
-
-        if (linhaCpf) {
-          doc.setFont("helvetica", "normal");
-          doc.text(linhaCpf, margin, currentY);
-          currentY += smallLineHeight;
-        }
-
-        doc.setFont("helvetica", "normal");
-        doc.text(linhaDescEspecifica, margin, currentY);
-        currentY += smallLineHeight;
-
-        // Linha 4 (Dados Financeiros) - Simplificada para o que temos
-        // Vencimento, Desc, Acresc não estão nos dados atuais
-        // Usaremos "Forma Pag." e "Valor"
-        const formaPagamento =
-          item.forma_pagamento.charAt(0).toUpperCase() +
-          item.forma_pagamento.slice(1); // Capitaliza
-        doc.text(`Forma Pag.: ${formaPagamento}`, margin, currentY);
-        doc.text(
-          `Valor: ${valorItemFormatado}`,
-          margin + contentWidth / 2,
-          currentY,
-          { align: "left" }
-        ); // Alinha valor à direita da primeira metade
-        currentY += smallLineHeight;
-
-        if (index < transacoes.length - 1) {
-          doc.setDrawColor(220, 220, 220); // Cinza mais claro para separador de item
-          doc.line(margin, currentY, pageWidth - margin, currentY);
-          currentY += 3; // Espaço após a linha
-        }
+        
+        currentY += 1; // Pequeno espaço entre movimentações
       });
-    } else {
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        "Nenhuma movimentação registrada neste caixa.",
-        margin,
-        currentY
-      );
+      
+      currentY += sectionSpacing;
+    }
+
+    // === TOTAIS ===
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("TOTAIS", margin, currentY);
+    currentY += lineHeight + 2;
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    
+    if (template.informacoes.mostrarTotalEntradas) {
+      doc.text(`Total Entradas: ${totais.entradas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, margin, currentY);
       currentY += lineHeight;
     }
+    if (template.informacoes.mostrarTotalSaidas) {
+      doc.text(`Total Saídas: ${totais.saidas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, margin, currentY);
+      currentY += lineHeight;
+    }
+    if (template.informacoes.mostrarSaldoFinal) {
+      doc.setFont("helvetica", "bold");
+      doc.text(`SALDO FINAL: ${totais.saldo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, margin, currentY);
+      currentY += lineHeight;
+    }
+    
+    currentY += sectionSpacing;
 
-    currentY += sectionSpacing; // Espaço antes do total recebido (se aplicável)
-    // Se você quiser um "TOTAL RECEBIDO" geral (incluindo entradas e saídas como no exemplo, o que é estranho)
-    // Ou podemos manter o resumo financeiro que já está no cabeçalho.
-    // O exemplo parece somar todos os "Subtotais" listados.
-    // No nosso caso, temos 'Total de Entradas' e 'Total de Saídas' já calculados.
-    // Vamos adicionar um "Total Geral Movimentado no Caixa (Entradas)" se fizer sentido.
-    doc.setFont("helvetica", "bold");
-    doc.text(
-      `TOTAL DE VALORES RECEBIDOS (ENTRADAS): ${totais.entradas.toLocaleString(
-        "pt-BR",
-        { style: "currency", currency: "BRL" }
-      )}`,
-      pageWidth - margin,
-      currentY,
-      { align: "right" }
-    );
-    currentY += lineHeight;
-    doc.text(
-      `TOTAL DE VALORES RETIRADOS (SAÍDAS): ${totais.saidas.toLocaleString(
-        "pt-BR",
-        { style: "currency", currency: "BRL" }
-      )}`,
-      pageWidth - margin,
-      currentY,
-      { align: "right" }
-    );
-
-    // Rodapé com Data de Emissão e Paginação
-    const pageCount = (doc as any).internal.getNumberOfPages(); // Necessário cast para acessar internal
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "italic");
-      const dataEmissao = `Emitido: ${new Date().toLocaleString("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-        hour12: false,
-      })}`;
-      doc.text(dataEmissao, margin, pageHeight - 10);
-      doc.text(
-        `Página ${i} de ${pageCount}`,
-        pageWidth - margin - 20,
-        pageHeight - 10
-      );
+    // === OBSERVAÇÕES DE FECHAMENTO ===
+    if (template.informacoes.mostrarObservacoesFechamento && observacoesFechamento) {
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("OBSERVAÇÕES DE FECHAMENTO", margin, currentY);
+      currentY += lineHeight + 2;
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const obsLines = doc.splitTextToSize(observacoesFechamento, pageWidth - 2 * margin);
+      obsLines.forEach((linha: string) => {
+        doc.text(linha, margin, currentY);
+        currentY += lineHeight;
+      });
+      
+      currentY += sectionSpacing;
     }
 
+    // === ASSINATURAS ===
+    if (template.informacoes.mostrarAssinaturas) {
+      currentY += sectionSpacing;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      
+      // Duas colunas para assinaturas
+      const coluna1X = margin;
+      const coluna2X = pageWidth / 2 + 10;
+      
+      // Linha de assinatura 1
+      doc.line(coluna1X, currentY, coluna1X + 80, currentY);
+      doc.text("Responsável pelo Caixa", coluna1X, currentY + 5);
+      
+      // Linha de assinatura 2
+      doc.line(coluna2X, currentY, coluna2X + 80, currentY);
+      doc.text("Supervisor/Gerente", coluna2X, currentY + 5);
+      
+      currentY += 15;
+    }
+
+    // === DATA DE GERAÇÃO ===
+    if (template.informacoes.mostrarDataGeracao) {
+      currentY = pageHeight - 10;
+      doc.setFontSize(8);
+      doc.setTextColor("#666666");
+      const dataEmissao = new Date().toLocaleString("pt-BR", { hour12: false });
+      doc.text(`Documento gerado em ${dataEmissao}`, margin, currentY);
+    }
+
+    // Salvar PDF
     doc.save(
       `fechamento_caixa_${caixaInfo.id.substring(0, 8)}_${
         new Date().toISOString().split("T")[0]
@@ -573,7 +485,7 @@ const generatePDFFechamentoCaixa = (
         valor_total_saidas: totalSaidas,
         saldo_final_calculado: saldoFinal
       };
-      generatePDFFechamentoCaixa(updatedActiveCaixaForPDF, (trans || []) as FinanceiroItem[], { e: totalEntradas, s: totalSaidas, sal: saldoFinal }, formData.observacoes_fechamento);
+      generatePDFFechamentoCaixa(updatedActiveCaixaForPDF, (trans || []) as FinanceiroItem[], { entradas: totalEntradas, saidas: totalSaidas, saldo: saldoFinal }, formData.observacoes_fechamento);
 
       toast.success("Caixa fechado com sucesso!");
       setActiveCaixaDetails(null);
@@ -643,7 +555,7 @@ const generatePDFFechamentoCaixa = (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         {/* Search Input div removed */}
         <div style={{ flexGrow: 1 }}> {/* This div can be removed if ActionButtonsContainer will fill width or be positioned differently later */}
-          {/* Placeholder for potential future content or remove if layout is handled by parent/ActionButtonsContainer exclusively */}
+          {/* Placeholder for potential future content or remove if layout is handled by parent/ActionButtonsContainer exclusivamente */}
         </div>
         <ActionButtonsContainer>
           {activeCaixaDetails && activeCaixaDetails.usuario_id === currentUser.id ? (
@@ -669,14 +581,12 @@ const generatePDFFechamentoCaixa = (
         </ActionButtonsContainer>
       </div>
       {
-        showAbrirCaixaModal && (
-          <AbrirCaixaModal
-            open={showAbrirCaixaModal}
-            onClose={handleCloseAbrirCaixaModal}
-            onAbrirCaixa={handleAbrirCaixa}
-            userName={currentUser.email || "Usuário"}
-            isSubmitting={isSubmittingCaixaAction}
-          />
+        showAbrirCaixaModal && (        <AbrirCaixaModal
+          open={showAbrirCaixaModal}
+          onClose={handleCloseAbrirCaixaModal}
+          onAbrirCaixa={handleAbrirCaixa}
+          userName={currentUser.email || "Usuário"}
+        />
         )
       }
       {
@@ -688,8 +598,6 @@ const generatePDFFechamentoCaixa = (
             alunosList={alunosListCaixa}
             produtosList={produtosListCaixa}
             formasPagamentoList={HARDCODED_FORMAS_PAGAMENTO}
-            isSubmitting={isSubmittingCaixaAction}
-            isLoadingSelectData={isLoadingCaixaSelectData}
           />
         )
       }
@@ -700,7 +608,6 @@ const generatePDFFechamentoCaixa = (
             onClose={handleCloseFecharCaixaModal}
             onConfirmFechar={handleConfirmarFechamentoCaixa}
             caixaId={activeCaixaDetails.id}
-            isSubmitting={isSubmittingCaixaAction}
           />
         )
       }

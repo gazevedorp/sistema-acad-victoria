@@ -20,8 +20,8 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, user, is
     formState: { errors },
     reset,
     setValue,
-    watch, // Watch for senha to use in confirmarSenha validation
   } = useForm<UserModalFormData>({
+    //@ts-expect-error
     resolver: yupResolver(userModalSchema(isEditing)), // Pass isEditing to the schema
     defaultValues: { // Set default values
       nome: '',
@@ -94,6 +94,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, user, is
           <S.CloseButton onClick={onClose}>&times;</S.CloseButton>
         </S.ModalHeader>
         <S.ModalBody>
+          {/* @ts-expect-error */}
           <S.Form onSubmit={handleSubmit(onSubmit)}>
             <S.FormGroup>
               <S.Label htmlFor="nome">Nome</S.Label>
@@ -113,21 +114,21 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, user, is
               {errors.telefone && <S.ErrorMsg>{errors.telefone.message}</S.ErrorMsg>}
             </S.FormGroup>
 
-            {!isEditing && (
-              <>
-                <S.FormGroup>
-                  <S.Label htmlFor="senha">Senha</S.Label>
-                  <S.Input id="senha" type="password" {...register('senha')} />
-                  {errors.senha && <S.ErrorMsg>{errors.senha.message}</S.ErrorMsg>}
-                </S.FormGroup>
+            <S.FormGroup>
+              <S.Label htmlFor="senha">
+                {isEditing ? 'Nova Senha (deixe em branco para manter a atual)' : 'Senha'}
+              </S.Label>
+              <S.Input id="senha" type="password" {...register('senha')} />
+              {errors.senha && <S.ErrorMsg>{errors.senha.message}</S.ErrorMsg>}
+            </S.FormGroup>
 
-                <S.FormGroup>
-                  <S.Label htmlFor="confirmarSenha">Confirmar Senha</S.Label>
-                  <S.Input id="confirmarSenha" type="password" {...register('confirmarSenha')} />
-                  {errors.confirmarSenha && <S.ErrorMsg>{errors.confirmarSenha.message}</S.ErrorMsg>}
-                </S.FormGroup>
-              </>
-            )}
+            <S.FormGroup>
+              <S.Label htmlFor="confirmarSenha">
+                {isEditing ? 'Confirmar Nova Senha' : 'Confirmar Senha'}
+              </S.Label>
+              <S.Input id="confirmarSenha" type="password" {...register('confirmarSenha')} />
+              {errors.confirmarSenha && <S.ErrorMsg>{errors.confirmarSenha.message}</S.ErrorMsg>}
+            </S.FormGroup>
 
             <S.FormGroup>
               <S.Label htmlFor="permissao">Permissão</S.Label>
