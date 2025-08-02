@@ -3,7 +3,6 @@ import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { supabase } from '../../../../lib/supabase';
 import { PlanoFormData } from '../../../../types/PlanoTypes';
-import { ModalidadeBasicInfo } from '../../../../types/TurmaTypes'; // Assuming path
 import { BasePlanoModalProps, ModalMode, planoSchema, defaultPlanoFormValues } from './PlanoModal.definitions';
 import * as Styles from './PlanoModal.styles';
 import Loader from '../../../../components/Loader/Loader'; // Assuming Loader path
@@ -43,7 +42,6 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
           nome: initialData.nome || defaultPlanoFormValues.nome,
           modalidade_id: initialData.modalidade_id || defaultPlanoFormValues.modalidade_id,
           valor_mensal: initialData.valor_mensal !== undefined ? initialData.valor_mensal : defaultPlanoFormValues.valor_mensal,
-          desconto_em_combinacao: initialData.desconto_em_combinacao !== undefined ? initialData.desconto_em_combinacao : defaultPlanoFormValues.desconto_em_combinacao,
           ativo: initialData.ativo !== undefined ? initialData.ativo : defaultPlanoFormValues.ativo,
         };
         reset(dataToReset);
@@ -54,14 +52,12 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
   const onSubmit: SubmitHandler<PlanoFormData> = async (formData) => {
     setIsSubmitting(true);
     setServerError(null);
-    let error = null;
     let savedData: PlanoFormData | undefined = undefined;
 
     // Ensure numeric fields are correctly typed
     const dataToSave: PlanoFormData = {
       ...formData,
       valor_mensal: Number(formData.valor_mensal),
-      desconto_em_combinacao: Number(formData.desconto_em_combinacao),
     };
 
     try {
@@ -87,7 +83,6 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error(`Error ${mode === ModalMode.CREATE ? 'creating' : 'updating'} plano:`, err);
-      error = err;
       setServerError(err.message || 'Ocorreu um erro desconhecido.');
       onSaveComplete(err, undefined, mode);
     } finally {
@@ -167,16 +162,6 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
                 />
                 {errors.valor_mensal && <Styles.ErrorMsg>{errors.valor_mensal.message}</Styles.ErrorMsg>}
               </Styles.FormGroup>
-
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="desconto_em_combinacao">Desconto em Combinação (%)</Styles.Label>
-                <Controller
-                  name="desconto_em_combinacao"
-                  control={control}
-                  render={({ field }) => <Styles.Input {...field} id="desconto_em_combinacao" type="number" min="0" max="100" readOnly={isViewMode} />}
-                />
-                {errors.desconto_em_combinacao && <Styles.ErrorMsg>{errors.desconto_em_combinacao.message}</Styles.ErrorMsg>}
-              </Styles.FormGroup>
             </Styles.FormRow>
 
             <Styles.FormGroup>
@@ -205,7 +190,7 @@ const PlanoModal: React.FC<BasePlanoModalProps> = ({
             {!isViewMode && (
               <Styles.SubmitButtonContainer>
                 <Styles.SubmitButton type="submit" disabled={isSubmitting || (!isDirty && mode === ModalMode.EDIT)}>
-                  {isSubmitting ? <Loader color={Styles.COLORS.white} size={20} /> : (mode === ModalMode.CREATE ? 'Cadastrar Plano' : 'Salvar Alterações')}
+                  {isSubmitting ? <Loader color="#ffffff" /> : (mode === ModalMode.CREATE ? 'Cadastrar Plano' : 'Salvar Alterações')}
                 </Styles.SubmitButton>
               </Styles.SubmitButtonContainer>
             )}

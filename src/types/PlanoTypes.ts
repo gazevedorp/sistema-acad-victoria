@@ -14,7 +14,6 @@ export interface Plano {
   updated_at?: string; // Supabase managed
   nome: string; // Name of the plan
   modalidade_id: string; // Foreign key referencing the 'modalidades' table
-  desconto_em_combinacao: number; // Percentage discount (e.g., 10 for 10%)
   ativo: boolean; // Status of the plan (active/inactive)
   valor_mensal: number; // Monthly value/price of the plan (float)
 
@@ -28,7 +27,6 @@ export interface Plano {
 export interface PlanoFormData {
   nome: string;
   modalidade_id: string;
-  desconto_em_combinacao: number; // Input as number, e.g., 10 for 10%
   ativo: boolean;
   valor_mensal: number; // Input as number
 }

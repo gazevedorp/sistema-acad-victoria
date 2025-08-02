@@ -43,13 +43,7 @@ export const planoSchema = Yup.object().shape({
     .typeError('Valor mensal deve ser um número')
     .required('Valor mensal é obrigatório')
     .positive('Valor mensal deve ser um número positivo')
-    .min(0.01, 'Valor mensal deve ser maior que zero'), // Assuming value must be greater than 0
-  desconto_em_combinacao: Yup.number()
-    .typeError('Desconto deve ser um número')
-    .required('Desconto é obrigatório')
-    .min(0, 'Desconto não pode ser negativo')
-    .max(100, 'Desconto não pode exceder 100%')
-    .integer('Desconto deve ser um número inteiro (0-100)'),
+    .min(0.01, 'Valor mensal deve ser maior que zero'),
   ativo: Yup.boolean()
     .required('Status é obrigatório'),
 });
@@ -61,6 +55,5 @@ export const defaultPlanoFormValues: PlanoFormData = {
   nome: '',
   modalidade_id: '',
   valor_mensal: 0, // Or a more sensible default like 50.00
-  desconto_em_combinacao: 0, // Default to 0% discount
   ativo: true, // Default to active
 };

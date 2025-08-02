@@ -59,6 +59,7 @@ export interface MatriculaItem {
   planoId: string;
   turmaId: string;
   valorOriginalPlano: number;
+  nomePersonalizado?: string; // Para planos personalizados
 }
 
 export interface MatriculaFormData {
@@ -129,7 +130,8 @@ export const matriculaSchema = yup.object().shape({
         planoId: yup.string().required("Plano é obrigatório"),
         turmaId: yup.string().required("Turma é obrigatória"),
         valorOriginalPlano: yup.number().required("Valor do plano é necessário"),
-    })).min(1, "Adicione pelo menos um plano/turma").required(),
+        nomePersonalizado: yup.string().optional(),
+    })).min(1, "Configure um plano para a matrícula").required(),
     dataMatricula: yup.string().required("Data da matrícula é obrigatória").transform(normalizeDate).matches(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
     diaVencimento: yup.number().required("Dia de vencimento é obrigatório").min(1).max(31).typeError("Dia inválido"),
     statusMatricula: yup.string().oneOf(['ativa', 'inativa'], "Status inválido").required("Status é obrigatório"),

@@ -12,12 +12,6 @@ import ClientModal from "../../../Clients/components/ClientModal/ClientModal";
 // --- CONSTANTS ---
 // No additional constants needed for this component
 
-// --- UTILITY FUNCTIONS ---
-const adjustString = (text: string | null | undefined): string => {
-  if (!text) return "";
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-};
-
 // --- PROPS DEFINITION ---
 // For now, StudentsSection is self-contained for data fetching.
 // Props might be added later if Home needs to influence it or receive data from it.
@@ -48,31 +42,72 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
 
   // Student Management States
   const [students, setStudents] = useState<Client[]>([]);
-  const [studentRowsPerPage, setStudentRowsPerPage] = useState<number>(5);
+  const [studentRowsPerPage, setStudentRowsPerPage] = useState<number>(10);
   const [studentCurrentPage, setStudentCurrentPage] = useState<number>(1);
   const [isClientModalOpen, setIsClientModalOpen] = useState<boolean>(false);
   const [clientModalMode, setClientModalMode] = useState<StudentModalMode>(StudentModalMode.CREATE);
   const [selectedClientState, setSelectedClientState] = useState<Client | null>(null);
   const [isStudentsLoading, setIsStudentsLoading] = useState<boolean>(false);
   const [studentSearchInput, setStudentSearchInput] = useState<string>("");
+  const [totalStudents, setTotalStudents] = useState<number>(0);
 
-  const fetchStudents = useCallback(async () => {
+  // Debounce hook
+  const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+
+    return debouncedValue;
+  };
+
+  const debouncedSearchTerm = useDebounce(studentSearchInput, 500);
+
+  const fetchStudents = useCallback(async (searchQuery: string = "", page: number = 1, pageSize: number = 10) => {
     setIsStudentsLoading(true);
     try {
-      const { data, error } = await supabase.from("alunos").select("*").order("nome", { ascending: true });
+      let query = supabase
+        .from("alunos")
+        .select("*", { count: 'exact' })
+        .order("nome", { ascending: true });
+
+      // Aplicar filtro de busca se fornecido
+      if (searchQuery.trim()) {
+        query = query.ilike('nome', `%${searchQuery}%`);
+      }
+
+      // Aplicar paginação
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
       if (error) {
         toast.error("Erro ao buscar alunos.");
         console.error("Error fetching students:", error);
+        setStudents([]);
+        setTotalStudents(0);
         return;
       }
       if (data) {
         setStudents(data as Client[]);
+        setTotalStudents(count || 0);
         // If a prop callback exists to notify parent about loaded students:
         // props.onStudentsLoaded?.(data as Client[]);
       }
     } catch (err) {
       toast.error("Erro inesperado ao buscar alunos.");
       console.error("Unexpected error fetching students:", err);
+      setStudents([]);
+      setTotalStudents(0);
     } finally {
       setIsStudentsLoading(false);
     }
@@ -81,6 +116,11 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  // Efeito para buscar quando o termo de busca mudar (com debounce)
+  useEffect(() => {
+    fetchStudents(debouncedSearchTerm, studentCurrentPage, studentRowsPerPage);
+  }, [debouncedSearchTerm, studentCurrentPage, studentRowsPerPage, fetchStudents]);
 
   const openCreateStudentModal = () => {
     setSelectedClientState(null);
@@ -111,11 +151,11 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
         toast.error(`Erro: ${(error as Error).message || "Erro desconhecido ao salvar aluno."}`);
       } else {
         toast.success(`Aluno ${mode === StudentModalMode.CREATE ? "cadastrado" : "atualizado"} com sucesso!`);
-        fetchStudents(); // Refresh student list
+        fetchStudents(debouncedSearchTerm, studentCurrentPage, studentRowsPerPage); // Refresh student list
         handleCloseStudentModal();
       }
     },
-    [fetchStudents] // fetchStudents is a dependency
+    [fetchStudents, debouncedSearchTerm, studentCurrentPage, studentRowsPerPage] // fetchStudents is a dependency
   );
 
   const getInitialStudentModalData = (): Partial<StudentFormData> | undefined => {
@@ -125,14 +165,14 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
     return undefined;
   };
 
-  const filteredStudents = students.filter((i) =>
-    adjustString(i.nome).includes(adjustString(studentSearchInput))
-  );
+  const handleStudentPageChange = (page: number) => {
+    setStudentCurrentPage(page);
+  };
 
-  const currentStudentTableData = filteredStudents.slice(
-    (studentCurrentPage - 1) * studentRowsPerPage,
-    (studentCurrentPage - 1) * studentRowsPerPage + studentRowsPerPage
-  );
+  const handleStudentRowsPerPageChange = (rows: number) => {
+    setStudentRowsPerPage(rows);
+    setStudentCurrentPage(1);
+  };
 
     // --- KEYBOARD SHORTCUTS ---
   useEffect(() => {
@@ -162,7 +202,10 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
         <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
           <Styles.Input // Assuming Input style will be in StudentsSection.styles.ts
             value={studentSearchInput}
-            onChange={(e) => setStudentSearchInput(e.target.value)}
+            onChange={(e) => {
+              setStudentSearchInput(e.target.value);
+              setStudentCurrentPage(1);
+            }}
             placeholder="Pesquisar Aluno"
           />
         </div>
@@ -176,16 +219,13 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
         </Styles.LoaderDiv>
       ) : (
         <DefaultTable
-          data={currentStudentTableData}
+          data={students}
           columns={studentTableColumns}
           rowsPerPage={studentRowsPerPage}
           currentPage={studentCurrentPage}
-          totalRows={filteredStudents.length}
-          onPageChange={setStudentCurrentPage}
-          onRowsPerPageChange={(r) => {
-            setStudentRowsPerPage(r);
-            setStudentCurrentPage(1);
-          }}
+          totalRows={totalStudents}
+          onPageChange={handleStudentPageChange}
+          onRowsPerPageChange={handleStudentRowsPerPageChange}
           onRowClick={handleStudentRowClick}
           // showActions -- REMOVE THIS
           noDelete // Assuming noDelete is a permanent prop here

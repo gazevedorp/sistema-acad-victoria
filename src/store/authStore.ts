@@ -3,29 +3,52 @@ import { persist } from "zustand/middleware";
 import { supabase } from "../lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
-// (Recomendado) Crie um tipo para seu perfil de usuário para melhorar o autocompletar e a segurança de tipos.
-// Substitua as propriedades pelos campos da sua tabela de perfis.
+// Tipo para as permissões específicas do usuário
+type UserPermissions = {
+  [modulo: string]: {
+    visualizar?: boolean;
+    criar?: boolean;
+    editar?: boolean;
+    excluir?: boolean;
+  };
+};
+
+// Tipo para o perfil do usuário
 type UserProfile = {
-  permissao: string,
-  // Adicione outros campos do perfil aqui
+  permissao: string;
+  permissions?: UserPermissions; // Permissões específicas baseadas na categoria
 };
 
 // Combine o tipo User do Supabase com o seu tipo de perfil
 type UserWithProfile = User & UserProfile;
 
 interface AuthState {
-  // O usuário agora pode ser do tipo combinado ou nulo
   user: UserWithProfile | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  hasPermission: (modulo: string, acao: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
+
+      hasPermission: (modulo: string, acao: string) => {
+        const { user } = get();
+        if (!user) return false;
+        
+        // Se for admin, tem todas as permissões
+        if (user.permissao === 'admin') return true;
+        
+        // Verifica permissões específicas
+        const modulePermissions = user.permissions?.[modulo];
+        if (!modulePermissions) return false;
+        
+        return modulePermissions[acao as keyof typeof modulePermissions] === true;
+      },
 
       login: async (email: string, password: string) => {
         // 1. Faz o login de autenticação
@@ -44,27 +67,47 @@ export const useAuthStore = create<AuthState>()(
         }
 
         // 2. Busca informações adicionais na tabela de perfis
-        //    !! Substitua 'profiles' pelo nome da sua tabela de usuários !!
         const { data: profileData, error: profileError } = await supabase
-          .from("usuarios") // <-- Altere "profiles" para o nome da sua tabela
+          .from("usuarios")
           .select("*")
           .eq("id", authData.user.id)
-          .single(); // .single() retorna um objeto único ou um erro, perfeito para perfis
+          .single();
 
         if (profileError) {
-          // Você pode optar por apenas logar o erro e continuar sem os dados do perfil
           console.error("Erro ao buscar perfil do usuário:", profileError.message);
-          // Ou lançar um erro para interromper o processo de login
-          // throw new Error(profileError.message);
         }
 
-        // 3. Combina os dados de autenticação com os dados do perfil
+        // 3. Busca as permissões específicas da categoria do usuário
+        const userPermission = profileData?.permissao?.toLowerCase() || "recepcao";
+        
+        const { data: permissionsData, error: permissionsError } = await supabase
+          .from("categoria_permissoes")
+          .select("modulo, permissao")
+          .eq("categoria_usuario", userPermission)
+          .eq("ativo", true);
+
+        if (permissionsError) {
+          console.error("Erro ao buscar permissões:", permissionsError.message);
+        }
+
+        // 4. Organiza as permissões em um objeto estruturado
+        const permissions: UserPermissions = {};
+        permissionsData?.forEach((perm) => {
+          if (!permissions[perm.modulo]) {
+            permissions[perm.modulo] = {};
+          }
+          permissions[perm.modulo][perm.permissao as keyof typeof permissions[typeof perm.modulo]] = true;
+        });
+
+        // 5. Combina os dados de autenticação com os dados do perfil e permissões
         const combinedUser = {
           ...authData.user,
-          ...(profileData || {}), // Usa um objeto vazio como fallback caso o perfil não seja encontrado
+          ...(profileData || {}),
+          permissao: userPermission,
+          permissions,
         };
 
-        // 4. Atualiza o estado com o usuário combinado
+        // 6. Atualiza o estado com o usuário combinado
         set({ user: combinedUser as UserWithProfile, isAuthenticated: true });
       },
 

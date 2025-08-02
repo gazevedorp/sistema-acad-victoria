@@ -1,78 +1,90 @@
 import React, { useEffect, useState } from "react";
-import DefaultTable, { TableColumn, TableRowActions } from "../../components/Table/DefaultTable"; // Added TableRowActions
+import DefaultTable, { TableColumn } from "../../components/Table/DefaultTable";
 import { supabase } from "../../lib/supabase.ts";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import Loader from "../../components/Loader/Loader.tsx";
-import * as Styles from "./Products.styles.ts"; // Assuming Styles.Button exists or will be created
+import * as Styles from "./Products.styles.ts";
 import { Product } from "../../types/ProductType.ts";
 import ProductModal from "./components/ProductModal/ProductModal.tsx";
-import ActionsMenu from "../../components/ActionMenu/ActionMenu.tsx"; // Import ActionMenu
-import { FaEdit, FaPlus } from "react-icons/fa"; // Import icons for buttons
-
-// Define columns for the table
-const getColumns = (
-  onEdit: (product: Product) => void,
-  // Add onDelete later if needed
-  // onDelete: (product: Product) => void,
-  activeRowMenu: string | null,
-  setActiveRowMenu: (id: string | null) => void
-): TableColumn<Product>[] => [
-    { field: "nome", header: "Nome" },
-    { field: "valor", header: "Valor", formatter: "money" },
-    { field: "ativo", header: "Status", formatter: "status" },
-    {
-      field: "actions",
-      header: "Ações",
-      render: (product) => (
-        <ActionsMenu<Product>
-          rowValue={product}
-          isOpen={activeRowMenu === product.id}
-          onToggle={() => setActiveRowMenu(activeRowMenu === product.id ? null : product.id)}
-          onClose={() => setActiveRowMenu(null)}
-          onEdit={() => {
-            onEdit(product);
-            setActiveRowMenu(null); // Close menu after action
-          }}
-          // Add onDelete prop later
-          noDelete={true} // For now, no delete functionality from this menu
-        />
-      ),
-    },
-  ];
+import { FaPlus } from "react-icons/fa";
 
 const Produtos: React.FC = () => {
   const [produtos, setProdutos] = useState<Product[]>([]);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(5);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [onLoading, setLoading] = useState<boolean>(false);
   const [inputSearch, setInputSearch] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [totalRows, setTotalRows] = useState<number>(0);
 
-  // State for managing which row's ActionMenu is open
-  const [activeRowMenu, setActiveRowMenu] = useState<string | null>(null);
+  // Debounce hook
+  const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+
+    return debouncedValue;
+  };
+
+  const debouncedSearchTerm = useDebounce(inputSearch, 500);
+
+  const columns: TableColumn<Product>[] = [
+    { field: "nome", header: "Nome", width: 300 },
+    { field: "valor", header: "Valor", formatter: "money", width: 150 },
+    { field: "ativo", header: "Status", formatter: "status", width: 100, textAlign: 'center' },
+  ];
 
   useEffect(() => {
     fetchProdutos();
   }, []);
 
-  const fetchProdutos = async () => {
+  // Efeito para buscar quando o termo de busca mudar (com debounce)
+  useEffect(() => {
+    fetchProdutos(debouncedSearchTerm, currentPage, rowsPerPage);
+  }, [debouncedSearchTerm, currentPage, rowsPerPage]);
+
+  const fetchProdutos = async (searchQuery: string = "", page: number = 1, pageSize: number = 10) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("produtos")
-        .select("*")
+        .select("*", { count: 'exact' })
         .order("nome", { ascending: true });
+
+      // Aplicar filtro de busca se fornecido
+      if (searchQuery.trim()) {
+        query = query.ilike('nome', `%${searchQuery}%`);
+      }
+
+      // Aplicar paginação
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
       if (error) {
         toast.error("Erro ao buscar produtos.");
         throw error;
       }
       if (data) {
         setProdutos(data as Product[]);
+        setTotalRows(count || 0);
       }
     } catch (err) {
       console.error("Erro ao buscar produtos:", err);
+      setProdutos([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -133,7 +145,7 @@ const Produtos: React.FC = () => {
 
       if (data) {
         toast.success(`Produto ${editingProduct ? 'atualizado' : 'criado'} com sucesso!`);
-        fetchProdutos(); // Refresh the list
+        fetchProdutos(debouncedSearchTerm, currentPage, rowsPerPage); // Refresh the list
         handleCloseModal();
       } else {
         // This case might indicate an issue if no data is returned without an error
@@ -148,23 +160,6 @@ const Produtos: React.FC = () => {
     }
   };
 
-  const adjustString = (text: string) => {
-    return text
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  };
-
-  const currentData = produtos;
-  const filteredData = currentData.filter((item) =>
-    adjustString(item.nome)?.includes(adjustString(inputSearch))
-  );
-
-  const totalRows = filteredData.length;
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
-  const paginatedData = filteredData.slice(startIndex, endIndex);
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -173,9 +168,6 @@ const Produtos: React.FC = () => {
     setRowsPerPage(rows);
     setCurrentPage(1);
   };
-
-  // Get columns with current state for ActionMenu
-  const tableColumns = getColumns(handleOpenEditModal, activeRowMenu, setActiveRowMenu);
 
   return (
     <Styles.Container>
@@ -196,7 +188,10 @@ const Produtos: React.FC = () => {
             <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
               <Styles.Input
                 value={inputSearch}
-                onChange={(e) => setInputSearch(e.target.value)}
+                onChange={(e) => {
+                  setInputSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Pesquisar Produto"
               />
             </div>
@@ -206,13 +201,14 @@ const Produtos: React.FC = () => {
             </Styles.Button>
           </div>
           <DefaultTable
-            data={paginatedData}
-            columns={tableColumns} // Use dynamic columns
+            data={produtos}
+            columns={columns}
             rowsPerPage={rowsPerPage}
             currentPage={currentPage}
             totalRows={totalRows}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handleRowsPerPageChange}
+            onRowClick={handleOpenEditModal}
           />
         </>
       )}

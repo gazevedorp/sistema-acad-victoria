@@ -1,16 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../../lib/supabase";
 import * as Styles from "../ClientModal/ClientModal.styles";
 import Loader from "../../../../components/Loader/Loader";
 import { toast } from "react-toastify";
-
-interface Presenca {
-  id: string;
-  data_aula: string;
-  presente: boolean;
-  observacoes?: string;
-  turma_nome?: string;
-}
+import { AlunoPresenca } from "../../../../types/PresencaTypes";
 
 interface ListaPresencasProps {
   alunoId: string;
@@ -18,44 +11,73 @@ interface ListaPresencasProps {
 }
 
 const ListaPresencas: React.FC<ListaPresencasProps> = ({ alunoId, alunoName }) => {
-  const [presencas, setPresencas] = useState<Presenca[]>([]);
+  const [presencas, setPresencas] = useState<AlunoPresenca[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchPresencas = async () => {
-      setIsLoading(true);
-      try {
-        // Aqui você pode ajustar a query conforme sua estrutura de banco
-        const { data, error } = await supabase
-          .from("presencas") // Assumindo que existe uma tabela de presenças
-          .select(`
-            id,
-            data_aula,
-            presente,
-            observacoes,
-            turmas(nome)
-          `)
-          .eq("aluno_id", alunoId)
-          .order("data_aula", { ascending: false });
+  const fetchPresencas = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("alunos_presenca")
+        .select("*")
+        .eq("codigo_aluno", alunoId) // Agora alunoId já é UUID
+        .order("data", { ascending: false })
+        .order("hora_entrada", { ascending: false });
 
-        if (error) {
-          console.error("Erro ao buscar presenças:", error);
-          toast.error("Erro ao carregar lista de presenças");
-        } else {
-          setPresencas(data || []);
-        }
-      } catch (error) {
-        console.error("Erro inesperado:", error);
-        toast.error("Erro inesperado ao carregar presenças");
-      } finally {
-        setIsLoading(false);
+      if (error) {
+        console.error("Erro ao buscar presenças:", error);
+        toast.error("Erro ao carregar lista de presenças");
+        setPresencas([]);
+      } else {
+        setPresencas(data || []);
       }
-    };
+    } catch (error) {
+      console.error("Erro inesperado:", error);
+      toast.error("Erro inesperado ao carregar presenças");
+      setPresencas([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [alunoId]);
 
+  useEffect(() => {
     if (alunoId) {
       fetchPresencas();
     }
-  }, [alunoId]);
+  }, [alunoId, fetchPresencas]);
+
+  const formatDate = (dateString: string) => {
+    try {
+      // Se a data já está no formato DD/MM/YYYY, apenas retorna
+      if (dateString.includes('/')) {
+        return dateString;
+      }
+      // Se está no formato YYYY-MM-DD, converte para DD/MM/YYYY
+      if (dateString.includes('-')) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (timeString: string) => {
+    try {
+      // Se já tem os dois pontos, provavelmente já está formatado
+      if (timeString.includes(':')) {
+        return timeString;
+      }
+      // Se é só números (ex: 0800), formata para HH:MM
+      if (timeString.length === 4) {
+        return `${timeString.slice(0, 2)}:${timeString.slice(2, 4)}`;
+      }
+      return timeString;
+    } catch {
+      return timeString;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -72,7 +94,7 @@ const ListaPresencas: React.FC<ListaPresencasProps> = ({ alunoId, alunoName }) =
           Lista de Presenças - {alunoName}
         </h3>
         <p style={{ margin: 0, color: Styles.COLORS.textMuted, fontSize: '0.875rem' }}>
-          Histórico de presenças do aluno nas aulas
+          Histórico de presenças do aluno
         </p>
       </div>
 
@@ -92,51 +114,58 @@ const ListaPresencas: React.FC<ListaPresencasProps> = ({ alunoId, alunoName }) =
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 120px 100px 1fr',
-            gap: '12px',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: '16px',
             padding: '12px 16px',
             backgroundColor: Styles.COLORS.backgroundLight,
             fontWeight: '500',
             fontSize: '0.875rem',
             borderBottom: `1px solid ${Styles.COLORS.borderDefault}`
           }}>
-            <div>Data da Aula</div>
-            <div>Turma</div>
-            <div>Status</div>
-            <div>Observações</div>
+            <div>Data</div>
+            <div>Horário</div>
+            <div>Descrição</div>
           </div>
           
           {presencas.map((presenca) => (
             <div
-              key={presenca.id}
+              key={presenca.codigo}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 120px 100px 1fr',
-                gap: '12px',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: '16px',
                 padding: '12px 16px',
                 borderBottom: `1px solid ${Styles.COLORS.borderDefault}`,
                 fontSize: '0.875rem'
               }}
             >
-              <div>{new Date(presenca.data_aula).toLocaleDateString('pt-BR')}</div>
-              <div>{presenca.turma_nome || '-'}</div>
-              <div>
-                <span style={{
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  backgroundColor: presenca.presente ? '#d4edda' : '#f8d7da',
-                  color: presenca.presente ? '#155724' : '#721c24'
-                }}>
-                  {presenca.presente ? 'Presente' : 'Faltou'}
-                </span>
+              <div style={{ fontWeight: '500' }}>
+                {formatDate(presenca.data)}
               </div>
-              <div style={{ color: Styles.COLORS.textMuted }}>
-                {presenca.observacoes || '-'}
+              <div style={{ color: Styles.COLORS.primary, fontWeight: '500' }}>
+                {formatTime(presenca.hora_entrada)}
+              </div>
+              <div style={{ color: Styles.COLORS.textBody }}>
+                {presenca.descricao || '-'}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {presencas.length > 0 && (
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: Styles.COLORS.backgroundLight,
+          borderRadius: '6px',
+          fontSize: '0.875rem',
+          color: Styles.COLORS.textMuted,
+          textAlign: 'center'
+        }}>
+          Total de registros: <strong style={{ color: Styles.COLORS.textBody }}>
+            {presencas.length}
+          </strong>
         </div>
       )}
     </Styles.TabContent>

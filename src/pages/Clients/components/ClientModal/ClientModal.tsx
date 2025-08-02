@@ -551,7 +551,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
                 console.log("Matrícula salva com sucesso:", savedData);
               }
             }}
-            onNavigateBack={() => setActiveTab("dados_cadastrais")}
           />
         ) : (
           <div style={{ padding: '40px', textAlign: 'center', color: Styles.COLORS.textMuted }}>

@@ -128,7 +128,7 @@ export const DisplayField = styled.div`
 
 export const SubmitButtonContainer = styled.div`
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 20px; 
 `;
 

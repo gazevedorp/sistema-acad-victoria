@@ -60,6 +60,17 @@ async function fetchTurmasByModalidadeId(
   return data || [];
 }
 
+async function fetchAllTurmas(): Promise<TurmaFromSupabase[]> {
+  const { data, error } = await supabase
+    .from("turmas")
+    .select("id, nome, horarios_descricao, modalidade_id");
+  if (error) {
+    console.error("MatriculaForm: Erro ao buscar todas as turmas:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
 interface MatriculaFormProps {
   alunoId: string;
   alunoName: string;
@@ -68,7 +79,6 @@ interface MatriculaFormProps {
     error: any | null,
     savedData?: Partial<MatriculaFormData & { valorCobradoFinal?: number }>
   ) => void;
-  onNavigateBack: () => void;
 }
 
 const MatriculaForm: React.FC<MatriculaFormProps> = ({
@@ -76,7 +86,6 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
   alunoName,
   mode,
   onSaveComplete,
-  onNavigateBack,
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const isEditMode = mode === ModalMode.EDIT;
@@ -88,6 +97,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
   const [turmasDisponiveisParaPlano, setTurmasDisponiveisParaPlano] = useState<
     TurmaFromSupabase[]
   >([]);
+  const [todasAsTurmas, setTodasAsTurmas] = useState<TurmaFromSupabase[]>([]);
   const [turmasConhecidas, setTurmasConhecidas] = useState<
     Map<string, TurmaFromSupabase>
   >(new Map());
@@ -97,15 +107,15 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
 
   const [planoParaAdicionarId, setPlanoParaAdicionarId] = useState<string>("");
   const [turmaParaAdicionarId, setTurmaParaAdicionarId] = useState<string>("");
+  const [isPlanoPersonalizado, setIsPlanoPersonalizado] = useState<boolean>(false);
+  const [planoPersonalizadoNome, setPlanoPersonalizadoNome] = useState<string>("");
+  const [planoPersonalizadoValor, setPlanoPersonalizadoValor] = useState<number>(0);
+  const [turmasPersonalizadas, setTurmasPersonalizadas] = useState<string[]>([]);
   const [calculatedValorCobrado, setCalculatedValorCobrado] =
     useState<number>(0);
   const [existingMatriculaId, setExistingMatriculaId] = useState<
     string | undefined
   >(undefined);
-  const [displayedValorTotalBruto, setDisplayedValorTotalBruto] =
-    useState<number>(0);
-  const [displayedDiscountPercentage, setDisplayedDiscountPercentage] =
-    useState<number>(0);
 
   const getDefaultMatriculaValues = useCallback(() => {
     const hoje = new Date();
@@ -220,11 +230,16 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
   useEffect(() => {
     if (!isViewMode) {
       setIsLoadingPlanos(true);
-      fetchPlanosFromDB()
-        .then(setPlanosDB)
-        .finally(() => setIsLoadingPlanos(false));
+      Promise.all([
+        fetchPlanosFromDB(),
+        fetchAllTurmas()
+      ]).then(([planos, turmas]) => {
+        setPlanosDB(planos);
+        setTodasAsTurmas(turmas);
+        updateTurmasConhecidas(turmas);
+      }).finally(() => setIsLoadingPlanos(false));
     }
-  }, [isViewMode]);
+  }, [isViewMode, updateTurmasConhecidas]);
 
   useEffect(() => {
     if (planoParaAdicionarId && planosDB.length > 0) {
@@ -250,59 +265,73 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
   useEffect(() => {
     if (!watchedMatriculaItens || watchedMatriculaItens.length === 0) {
       setCalculatedValorCobrado(0);
-      setDisplayedValorTotalBruto(0); // Adicionado
-      setDisplayedDiscountPercentage(0); // Adicionado
       return;
     }
+    
+    // Como agora só temos um plano, não há desconto por múltiplos planos
     const valorTotalMensal = watchedMatriculaItens.reduce(
       (sum, item) => sum + item.valorOriginalPlano,
       0
     );
-    let discountPercentage = 0;
-    const numberOfItems = watchedMatriculaItens.length;
-    if (numberOfItems === 2) discountPercentage = 0.05;
-    else if (numberOfItems >= 3) discountPercentage = 0.1;
-
-    const valorDoDesconto = valorTotalMensal * discountPercentage;
-    const finalValue = Math.max(0, valorTotalMensal - valorDoDesconto);
-
-    setDisplayedValorTotalBruto(valorTotalMensal); // Adicionado
-    setDisplayedDiscountPercentage(discountPercentage * 100); // Adicionado (multiplica por 100 para exibir como %)
-    setCalculatedValorCobrado(finalValue);
+    
+    setCalculatedValorCobrado(valorTotalMensal);
   }, [watchedMatriculaItens]);
 
   const handleAddMatriculaItem = useCallback(() => {
-    if (planoParaAdicionarId && turmaParaAdicionarId) {
-      const planoSelecionado = planosDB.find(
-        (p) => p.id === planoParaAdicionarId
-      );
-      if (!planoSelecionado) return;
-      const novoItem: MatriculaItem = {
-        planoId: planoSelecionado.id,
-        turmaId: turmaParaAdicionarId,
-        valorOriginalPlano: planoSelecionado.valor_mensal,
-      };
-      const atuaisItens = getValues("matriculaItens") || [];
-      if (
-        !atuaisItens.find(
-          (item) =>
-            item.planoId === novoItem.planoId &&
-            item.turmaId === novoItem.turmaId
-        )
-      ) {
-        setValue("matriculaItens", [...atuaisItens, novoItem], {
+    // Remover item existente se houver (só pode ter um plano)
+    setValue("matriculaItens", [], { shouldValidate: true, shouldDirty: true });
+    
+    if (isPlanoPersonalizado) {
+      // Plano personalizado
+      if (planoPersonalizadoNome && planoPersonalizadoValor > 0 && turmasPersonalizadas.length > 0) {
+        const itensPersonalizados = turmasPersonalizadas.map(turmaId => ({
+          planoId: "personalizado",
+          turmaId: turmaId,
+          valorOriginalPlano: planoPersonalizadoValor,
+          nomePersonalizado: planoPersonalizadoNome,
+        }));
+        
+        setValue("matriculaItens", itensPersonalizados, {
           shouldValidate: true,
           shouldDirty: true,
         });
+        
+        // Limpar campos
+        setPlanoPersonalizadoNome("");
+        setPlanoPersonalizadoValor(0);
+        setTurmasPersonalizadas([]);
       }
-      setPlanoParaAdicionarId("");
-      setTurmaParaAdicionarId("");
+    } else {
+      // Plano do banco de dados
+      if (planoParaAdicionarId && turmaParaAdicionarId) {
+        const planoSelecionado = planosDB.find(
+          (p) => p.id === planoParaAdicionarId
+        );
+        if (!planoSelecionado) return;
+        
+        const novoItem: MatriculaItem = {
+          planoId: planoSelecionado.id,
+          turmaId: turmaParaAdicionarId,
+          valorOriginalPlano: planoSelecionado.valor_mensal,
+        };
+        
+        setValue("matriculaItens", [novoItem], {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        
+        setPlanoParaAdicionarId("");
+        setTurmaParaAdicionarId("");
+      }
     }
   }, [
+    isPlanoPersonalizado,
+    planoPersonalizadoNome,
+    planoPersonalizadoValor,
+    turmasPersonalizadas,
     planoParaAdicionarId,
     turmaParaAdicionarId,
     planosDB,
-    getValues,
     setValue,
   ]);
 
@@ -324,14 +353,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
 
     const { matriculaItens, ...matriculaInfoGeral } = formData;
 
-    const numeroDePlanos = matriculaItens.length;
-    let porcentagemDeDesconto = 0;
-    if (numeroDePlanos === 2) {
-      porcentagemDeDesconto = 0.05;
-    } else if (numeroDePlanos >= 3) {
-      porcentagemDeDesconto = 0.1;
-    }
-
+    // Como agora só temos um plano, não há desconto
     const valorTotalBruto = matriculaItens.reduce(
       (sum, item) => sum + item.valorOriginalPlano,
       0
@@ -351,7 +373,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       data_matricula: matriculaInfoGeral.dataMatricula,
       data_vencimento: dataVencimentoFormatada,
       valor_total: valorTotalBruto,
-      porcentagem_desconto: porcentagemDeDesconto,
+      porcentagem_desconto: 0, // Sem desconto para um único plano
       valor_final_cobrado: calculatedValorCobrado,
       status_matricula: matriculaInfoGeral.statusMatricula,
       observacao: matriculaInfoGeral.observacoesMatricula,
@@ -396,19 +418,34 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
         .eq("id_matricula", currentMatriculaId);
 
       const itensParaSalvar = matriculaItens.map((item) => {
-        const planoCorrespondente = planosDB.find((p) => p.id === item.planoId);
-        if (!planoCorrespondente) {
-          throw new Error(
-            `Plano com ID ${item.planoId} não encontrado nos dados de planos disponíveis.`
-          );
+        if (item.planoId === "personalizado") {
+          // Para plano personalizado, usamos NULL para o id_plano
+          const turmaCorrespondente = turmasConhecidas.get(item.turmaId);
+          return {
+            id_matricula: currentMatriculaId,
+            id_plano: null, // NULL para plano personalizado
+            id_turma: item.turmaId,
+            id_modalidade: turmaCorrespondente?.modalidade_id || null,
+            valor_unitario: item.valorOriginalPlano,
+            nome_plano_personalizado: item.nomePersonalizado || "Plano Personalizado",
+          };
+        } else {
+          // Para plano do banco de dados
+          const planoCorrespondente = planosDB.find((p) => p.id === item.planoId);
+          if (!planoCorrespondente) {
+            throw new Error(
+              `Plano com ID ${item.planoId} não encontrado nos dados de planos disponíveis.`
+            );
+          }
+          return {
+            id_matricula: currentMatriculaId,
+            id_plano: item.planoId,
+            id_turma: item.turmaId,
+            id_modalidade: planoCorrespondente.modalidade_id,
+            valor_unitario: item.valorOriginalPlano,
+            nome_plano_personalizado: null,
+          };
         }
-        return {
-          id_matricula: currentMatriculaId,
-          id_plano: item.planoId,
-          id_turma: item.turmaId,
-          id_modalidade: planoCorrespondente.modalidade_id,
-          valor_unitario: item.valorOriginalPlano,
-        };
       });
 
       if (itensParaSalvar.length > 0) {
@@ -456,27 +493,100 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
           <Styles.SectionTitle
             style={{ marginTop: "10px", fontSize: "0.95rem" }}
           >
-            Adicionar Plano e Turma
+            Configurar Plano (Apenas 1 plano permitido)
           </Styles.SectionTitle>
-          <Styles.FormRow>
-            <Styles.FormGroup>
-              <Styles.Label>Plano disponível</Styles.Label>
-              <Styles.Select
-                value={planoParaAdicionarId}
-                onChange={(e) => {
-                  setPlanoParaAdicionarId(e.target.value);
-                  setTurmaParaAdicionarId("");
-                }}
-                disabled={isLoadingPlanos}
-              >
-                <option value="">
-                  {isLoadingPlanos ? "Carregando..." : "Selecione um Plano"}
-                </option>
-                {planosDB.map(
-                  (p) =>
-                    !(getValues("matriculaItens") || []).find(
-                      (item) => item.planoId === p.id
-                    ) && (
+          
+          <Styles.FormGroup>
+            <Styles.Label>Tipo de Plano</Styles.Label>
+            <Styles.Select
+              value={isPlanoPersonalizado ? "personalizado" : "banco"}
+              onChange={(e) => {
+                const isPersonalizado = e.target.value === "personalizado";
+                setIsPlanoPersonalizado(isPersonalizado);
+                // Limpar seleções anteriores
+                setPlanoParaAdicionarId("");
+                setTurmaParaAdicionarId("");
+                setPlanoPersonalizadoNome("");
+                setPlanoPersonalizadoValor(0);
+                setTurmasPersonalizadas([]);
+                // Limpar matrícula atual
+                setValue("matriculaItens", []);
+              }}
+            >
+              <option value="banco">Plano do Sistema</option>
+              <option value="personalizado">Plano Personalizado</option>
+            </Styles.Select>
+          </Styles.FormGroup>
+
+          {isPlanoPersonalizado ? (
+            <>
+              <Styles.FormRow>
+                <Styles.FormGroup>
+                  <Styles.Label>Nome do Plano Personalizado</Styles.Label>
+                  <Styles.Input
+                    type="text"
+                    value={planoPersonalizadoNome}
+                    onChange={(e) => setPlanoPersonalizadoNome(e.target.value)}
+                    placeholder="Ex: Plano Especial"
+                  />
+                </Styles.FormGroup>
+                <Styles.FormGroup>
+                  <Styles.Label>Valor Mensal (R$)</Styles.Label>
+                  <Styles.Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={planoPersonalizadoValor}
+                    onChange={(e) => setPlanoPersonalizadoValor(Number(e.target.value))}
+                    placeholder="0.00"
+                  />
+                </Styles.FormGroup>
+              </Styles.FormRow>
+              
+              <Styles.FormGroup>
+                <Styles.Label>Selecionar Turmas</Styles.Label>
+                <div style={{ maxHeight: "150px", overflowY: "auto", border: "1px solid #ccc", padding: "10px", borderRadius: "4px" }}>
+                  {todasAsTurmas.map((turma) => (
+                    <div key={turma.id} style={{ marginBottom: "5px" }}>
+                      <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={turmasPersonalizadas.includes(turma.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setTurmasPersonalizadas(prev => [...prev, turma.id]);
+                            } else {
+                              setTurmasPersonalizadas(prev => prev.filter(id => id !== turma.id));
+                            }
+                          }}
+                          style={{ marginRight: "8px" }}
+                        />
+                        <span>
+                          {turma.nome} {turma.horarios_descricao ? `(${turma.horarios_descricao})` : ""}
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </Styles.FormGroup>
+            </>
+          ) : (
+            <>
+              <Styles.FormRow>
+                <Styles.FormGroup>
+                  <Styles.Label>Plano disponível</Styles.Label>
+                  <Styles.Select
+                    value={planoParaAdicionarId}
+                    onChange={(e) => {
+                      setPlanoParaAdicionarId(e.target.value);
+                      setTurmaParaAdicionarId("");
+                    }}
+                    disabled={isLoadingPlanos}
+                  >
+                    <option value="">
+                      {isLoadingPlanos ? "Carregando..." : "Selecione um Plano"}
+                    </option>
+                    {planosDB.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.nome} -{" "}
                         {Number(p.valor_mensal).toLocaleString("pt-BR", {
@@ -484,40 +594,46 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
                           currency: "BRL",
                         })}
                       </option>
-                    )
-                )}
-              </Styles.Select>
-            </Styles.FormGroup>
-            <Styles.FormGroup>
-              <Styles.Label>Turma para este Plano</Styles.Label>
-              <Styles.Select
-                value={turmaParaAdicionarId}
-                onChange={(e) => setTurmaParaAdicionarId(e.target.value)}
-                disabled={isLoadingTurmasParaAdicionar || !planoParaAdicionarId}
-              >
-                <option value="">
-                  {isLoadingTurmasParaAdicionar
-                    ? "Carregando..."
-                    : planoParaAdicionarId
-                    ? "Selecione uma Turma"
-                    : "Escolha um plano"}
-                </option>
-                {turmasDisponiveisParaPlano.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome}{" "}
-                    {t.horarios_descricao ? `(${t.horarios_descricao})` : ""}
-                  </option>
-                ))}
-              </Styles.Select>
-            </Styles.FormGroup>
-          </Styles.FormRow>
+                    ))}
+                  </Styles.Select>
+                </Styles.FormGroup>
+                <Styles.FormGroup>
+                  <Styles.Label>Turma para este Plano</Styles.Label>
+                  <Styles.Select
+                    value={turmaParaAdicionarId}
+                    onChange={(e) => setTurmaParaAdicionarId(e.target.value)}
+                    disabled={isLoadingTurmasParaAdicionar || !planoParaAdicionarId}
+                  >
+                    <option value="">
+                      {isLoadingTurmasParaAdicionar
+                        ? "Carregando..."
+                        : planoParaAdicionarId
+                        ? "Selecione uma Turma"
+                        : "Escolha um plano"}
+                    </option>
+                    {turmasDisponiveisParaPlano.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}{" "}
+                        {t.horarios_descricao ? `(${t.horarios_descricao})` : ""}
+                      </option>
+                    ))}
+                  </Styles.Select>
+                </Styles.FormGroup>
+              </Styles.FormRow>
+            </>
+          )}
+          
           <Styles.ActionButtonSmall
             type="button"
             onClick={handleAddMatriculaItem}
-            disabled={!planoParaAdicionarId || !turmaParaAdicionarId}
+            disabled={
+              isPlanoPersonalizado 
+                ? (!planoPersonalizadoNome || planoPersonalizadoValor <= 0 || turmasPersonalizadas.length === 0)
+                : (!planoParaAdicionarId || !turmaParaAdicionarId)
+            }
             style={{ alignSelf: "flex-start", marginBottom: "15px" }}
           >
-            Adicionar Item à Matrícula
+            {watchedMatriculaItens.length > 0 ? "Substituir Plano" : "Definir Plano"}
           </Styles.ActionButtonSmall>
         </>
       )}
@@ -525,19 +641,24 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       {(watchedMatriculaItens || []).length > 0 ? (
         <>
           <Styles.SectionTitle style={{ fontSize: "0.95rem" }}>
-            Itens da Matrícula Adicionados
+            Plano Configurado
           </Styles.SectionTitle>
           <Styles.MatriculaItemsList>
             {watchedMatriculaItens.map((item, index) => {
               const planoDetalhe = planosDB.find((p) => p.id === item.planoId);
               const turmaDetalhe = turmasConhecidas.get(item.turmaId);
+              const isPersonalizado = item.planoId === "personalizado";
+              
               return (
                 <Styles.MatriculaItemCard
                   key={`${item.planoId}-${item.turmaId}-${index}`}
                 >
                   <div>
                     <strong>Plano:</strong>{" "}
-                    {planoDetalhe?.nome || `ID ${item.planoId}`}
+                    {isPersonalizado 
+                      ? (item.nomePersonalizado || "Plano Personalizado")
+                      : (planoDetalhe?.nome || `ID ${item.planoId}`)
+                    }
                     <br />
                     <strong>Turma:</strong>{" "}
                     {turmaDetalhe?.nome || `ID Turma: ${item.turmaId}`}{" "}
@@ -545,7 +666,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
                       ? `(${turmaDetalhe.horarios_descricao})`
                       : ""}
                     <br />
-                    <strong>Valor Original:</strong>{" "}
+                    <strong>Valor:</strong>{" "}
                     {Number(item.valorOriginalPlano).toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
@@ -565,7 +686,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
           </Styles.MatriculaItemsList>
         </>
       ) : (
-        isViewMode && <p>Nenhum item de matrícula encontrado.</p>
+        isViewMode && <p>Nenhum plano configurado para esta matrícula.</p>
       )}
 
       {errors.matriculaItens && (
@@ -574,33 +695,14 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
           !Array.isArray(errors.matriculaItens) &&
           errors.matriculaItens.message
             ? errors.matriculaItens.message
-            : "Adicione pelo menos um plano e turma à matrícula."}
+            : "Configure um plano para a matrícula."}
         </Styles.ErrorMsg>
       )}
 
       <Styles.FormRow style={{ marginTop: "15px", alignItems: "flex-end" }}>
-        {" "}
-        {/* alignItems para alinhar a base se as alturas dos labels variarem */}
-        <Styles.FormGroup style={{ marginBottom: 0 }}>
-          {" "}
-          {/* Remove margem inferior para melhor alinhamento na linha */}
-          <Styles.Label>Valor Original</Styles.Label>
-          <Styles.DisplayField>
-            {displayedValorTotalBruto.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-          </Styles.DisplayField>
-        </Styles.FormGroup>
-        <Styles.FormGroup style={{ marginBottom: 0 }}>
-          <Styles.Label>Desconto Aplicado</Styles.Label>
-          <Styles.DisplayField>
-            {displayedDiscountPercentage.toFixed(0)}%
-          </Styles.DisplayField>
-        </Styles.FormGroup>
         <Styles.FormGroup style={{ marginBottom: 0 }}>
           <Styles.Label style={{ fontWeight: "bold" }}>
-            Valor Final
+            Valor Mensal
           </Styles.Label>
           <Styles.DisplayField style={{ fontWeight: "bold", fontSize: "1rem" }}>
             {calculatedValorCobrado.toLocaleString("pt-BR", {
@@ -664,16 +766,8 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       {!isViewMode && (
         <Styles.SubmitButtonContainer>
           <Styles.SubmitButton
-            type="button"
-            onClick={onNavigateBack}
-            style={{ backgroundColor: Styles.COLORS.textMuted, order: 1 }}
-          >
-            Dados Cadastrais
-          </Styles.SubmitButton>
-          <Styles.SubmitButton
             type="submit"
             disabled={isSubmitting}
-            style={{ order: 2 }}
           >
             {isSubmitting ? (
               <Loader />

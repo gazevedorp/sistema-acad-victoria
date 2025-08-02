@@ -4,13 +4,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   FiHome,
   FiPackage,
-  // FiUsers,
-  // FiBarChart2,
   FiLogOut,
   FiTable,
   FiFile,
-  FiArchive,
   FiSettings,
+  FiShield,
+  FiLayout,
 } from "react-icons/fi";
 import { FaUserFriends } from "react-icons/fa";
 import { useAuthStore } from "../../store/authStore";
@@ -39,40 +38,57 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
-  const user = useAuthStore((state) => state.user);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
   const isMobile = useIsMobile();
   const location = useLocation();
 
   const effectiveMinimized = isMobile ? true : minimized;
-  const isAdmin = user?.permissao === "admin";
 
-  const menuItems = useMemo(
-    () => [
-      { icon: <FiHome />, text: "Home", route: "/" },
-      { icon: <FiTable />, text: "Turmas", route: "/turmas" },
-      { icon: <FiFile />, text: "Planos", route: "/planos" },
-      { icon: <FiPackage />, text: "Produtos", route: "/products" },
-      ...(isAdmin ? [
-        {
-          icon: <FaUserFriends />,
-          text: "Usuários",
-          route: "/users",
-        }, // Added Users link
-        {
-          icon: <FiArchive />,
-          text: "Caixas",
-          route: "/caixas",
-        }, // Added new menu item
-        {
-          icon: <FiSettings />,
-          text: "Templates",
-          route: "/templates-fechamento",
-        },
-      ] : []),
-      // { icon: <FiBarChart2 />, text: "Relatorios", route: "/relatorios" },
-    ],
-    [isAdmin]
-  );
+  const menuItems = useMemo(() => {
+    const items = [];
+
+    // Home - sempre visível se tiver acesso
+    if (hasPermission('home', 'visualizar')) {
+      items.push({ icon: <FiHome />, text: "Home", route: "/" });
+    }
+
+    // Turmas
+    if (hasPermission('turmas', 'visualizar')) {
+      items.push({ icon: <FiTable />, text: "Turmas", route: "/turmas" });
+    }
+
+    // Modalidades
+    if (hasPermission('modalidades', 'visualizar')) {
+      items.push({ icon: <FiSettings />, text: "Modalidades", route: "/modalidades" });
+    }
+
+    // Planos
+    if (hasPermission('planos', 'visualizar')) {
+      items.push({ icon: <FiFile />, text: "Planos", route: "/planos" });
+    }
+
+    // Produtos
+    if (hasPermission('produtos', 'visualizar')) {
+      items.push({ icon: <FiPackage />, text: "Produtos", route: "/products" });
+    }
+
+    // Usuários
+    if (hasPermission('usuarios', 'visualizar')) {
+      items.push({ icon: <FaUserFriends />, text: "Usuários", route: "/users" });
+    }
+
+    // Permissões
+    if (hasPermission('permissoes', 'visualizar')) {
+      items.push({ icon: <FiShield />, text: "Permissões", route: "/permissoes" });
+    }
+
+    // Templates de Fechamento
+    if (hasPermission('templates_fechamento', 'visualizar')) {
+      items.push({ icon: <FiLayout />, text: "Templates", route: "/templates-fechamento" });
+    }
+
+    return items;
+  }, [hasPermission]);
 
   const handleLogout = useCallback(async () => {
     try {

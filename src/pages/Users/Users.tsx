@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import DefaultTable, { TableColumn } from "../../components/Table/DefaultTable";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseAdmin } from "../../lib/supabase";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import Loader from "../../components/Loader/Loader";
@@ -83,13 +83,23 @@ const Users: React.FC = () => {
 
         // Se uma nova senha foi fornecida, atualizar a senha do usuário
         if (formData.senha && formData.senha.trim() !== '') {
-          const { error: passwordError } = await supabase.auth.updateUser({
-            password: formData.senha
-          });
+          try {
+            // Para atualizar senha de outro usuário, usar Admin API
+            const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
+              userId,
+              { password: formData.senha }
+            );
 
-          if (passwordError) {
-            toast.error(`Erro ao atualizar senha: ${passwordError.message}`);
-            throw passwordError;
+            if (passwordError) {
+              toast.error(`Erro ao atualizar senha: ${passwordError.message}`);
+              throw passwordError;
+            }
+            
+            toast.success('Senha atualizada com sucesso!');
+          } catch (adminError: any) {
+            // Se não tiver acesso à Admin API, mostrar aviso
+            console.warn('Admin API não disponível:', adminError);
+            toast.warn('Senha não foi alterada. Verifique se a VITE_SUPABASE_SERVICE_ROLE_KEY está configurada corretamente.');
           }
         }
 
