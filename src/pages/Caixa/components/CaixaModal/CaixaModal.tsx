@@ -71,9 +71,9 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
   } = useForm<CaixaModalFormData>({
     resolver: yupResolver(caixaModalSchema),
     defaultValues: {
-      tipoMovimentacao: TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE,
+      tipo: TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE,
       valor: undefined,
-      forma_pagamento_id: "",
+      forma_pagamento: "",
       descricao: "",
       cliente_id: undefined,
       produto_id: undefined,
@@ -81,7 +81,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
     },
   });
 
-  const selectedTipoMovimentacao = watch("tipoMovimentacao");
+  const selectedTipoMovimentacao = watch("tipo");
   const selectedClienteId = watch("cliente_id");
   const selectedProdutoId = watch("produto_id");
   const watchedQuantidade = watch("quantidade");
@@ -90,9 +90,9 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
     if (open) {
       const defaultTipo = selectedTipoMovimentacao || TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE;
       reset({
-        tipoMovimentacao: defaultTipo,
+        tipo: defaultTipo,
         valor: undefined,
-        forma_pagamento_id: "",
+        forma_pagamento: "",
         descricao: "",
         cliente_id: defaultTipo === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE ? getValues("cliente_id") : undefined,
         produto_id: defaultTipo === TipoMovimentacaoCaixa.VENDA_PRODUTO ? getValues("produto_id") : undefined,
@@ -156,15 +156,15 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
   const onSubmit: SubmitHandler<CaixaModalFormData> = async (data) => {
     setIsSubmitting(true);
     const dataToSave: Partial<CaixaModalFormData> = {
-      tipoMovimentacao: data.tipoMovimentacao,
+      tipo: data.tipo,
       valor: data.valor,
-      forma_pagamento_id: data.forma_pagamento_id,
+      forma_pagamento: data.forma_pagamento,
       descricao: data.descricao || undefined,
     };
 
-    if (data.tipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE) {
+    if (data.tipo === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE) {
       dataToSave.cliente_id = data.cliente_id;
-    } else if (data.tipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
+    } else if (data.tipo === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       dataToSave.produto_id = data.produto_id;
       // dataToSave.quantidade = data.quantidade; // Opcional salvar quantidade, se sua tabela 'financeiro' tiver
     }
@@ -190,8 +190,8 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
         <Styles.ModalBody>
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
-              <Styles.Label htmlFor="tipoMovimentacao">Tipo de Movimentação</Styles.Label>
-              <Styles.Select {...register("tipoMovimentacao")} id="tipoMovimentacao">
+              <Styles.Label htmlFor="tipo">Tipo de Movimentação</Styles.Label>
+              <Styles.Select {...register("tipo")} id="tipo">
                 <option value={TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE}>
                   Pagamento de Mensalidade
                 </option>
@@ -202,7 +202,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
                   Saída de Caixa
                 </option>
               </Styles.Select>
-              {errors.tipoMovimentacao && <Styles.ErrorMsg>{errors.tipoMovimentacao.message}</Styles.ErrorMsg>}
+              {errors.tipo && <Styles.ErrorMsg>{errors.tipo.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
 
             {selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE && (
@@ -263,8 +263,8 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
             </Styles.FormGroup>
 
             <Styles.FormGroup>
-              <Styles.Label htmlFor="forma_pagamento_id">Forma de Pagamento</Styles.Label>
-              <Styles.Select {...register("forma_pagamento_id")} id="forma_pagamento_id">
+              <Styles.Label htmlFor="forma_pagamento">Forma de Pagamento</Styles.Label>
+              <Styles.Select {...register("forma_pagamento")} id="forma_pagamento">
                 <option value="">Selecione a Forma</option>
                 {formasPagamentoList.map((forma) => (
                   <option key={forma.id} value={forma.id}>
@@ -272,7 +272,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
                   </option>
                 ))}
               </Styles.Select>
-              {errors.forma_pagamento_id && <Styles.ErrorMsg>{errors.forma_pagamento_id.message}</Styles.ErrorMsg>}
+              {errors.forma_pagamento && <Styles.ErrorMsg>{errors.forma_pagamento.message}</Styles.ErrorMsg>}
             </Styles.FormGroup>
             
             {(selectedTipoMovimentacao === TipoMovimentacaoCaixa.PAGAMENTO_MENSALIDADE || 
