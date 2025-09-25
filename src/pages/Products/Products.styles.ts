@@ -20,7 +20,7 @@ export const Header = styled.div`
 `;
 
 export const Title = styled.h1`
-  font-size: 1.75rem;
+  font-size: 32px;
   margin: 0 0 8px 0;
   font-weight: 600;
 `;
@@ -29,6 +29,34 @@ export const Subtitle = styled.p`
   font-size: 14px;
   color: #888;
   margin: 0;
+`;
+
+export const CadastrarButton = styled.button`
+  color: #fff;
+  border: none;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding-bottom: 10px;
+  align-self: flex-start;
+  background: #0d88cb;
+  &:hover {
+    background: #0898e6;
+  }
+`;
+
+export const ActionIconsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+`;
+
+export const ActionLabel = styled.span`
+  margin-right: 8px;
+  font-size: 14px;
+  color: #666;
 `;
 
 export const LoaderDiv = styled.div`
@@ -72,28 +100,5 @@ export const Input = styled.input`
   &[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
-  }
-`;
-
-export const Button = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #fff;
-  background-color: #0898e6; // Example primary color
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-
-  &:hover {
-    background-color: #0b7ac1; // Darker shade for hover
-  }
-
-  svg {
-    margin-right: 8px;
   }
 `;

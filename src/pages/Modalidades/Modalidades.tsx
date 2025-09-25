@@ -1,202 +1,186 @@
 import React, { useEffect, useState, useCallback } from "react";
 import DefaultTable, { TableColumn } from "../../components/Table/DefaultTable";
-import { supabase } from "../../lib/supabase";
-import { Modalidade, ModalidadeFormData } from "../../types/ModalidadeTypes";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import Loader from "../../components/Loader/Loader";
 import * as Styles from "./Modalidades.styles";
-import ModalidadeModal from "./components/ModalidadeModal/ModalidadeModal";
-import { ModalMode } from "./components/ModalidadeModal/ModalidadeModal.definitions";
 import { FiPlus } from "react-icons/fi";
+import ModalidadeModal from "./components/ModalidadeModal/ModalidadeModal";
+import { supabase } from "../../lib/supabase"; // Assuming supabase is configured
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css"; // Import toastify CSS
+import Loader from "../../components/Loader/Loader";
+import { ModalMode } from "./components/ModalidadeModal/ModalidadeModal.definitions";
+import { Modalidade } from "../../types/ModalidadeTypes";
 
-interface TableFilters {
-  search: string;
-  currentPage: number;
-  rowsPerPage: number;
-}
+const columns: TableColumn<Modalidade>[] = [
+  { field: "nome", header: "Nome" },
+  { field: "ativo", header: "Status", formatter: "status" }, // Assuming you have a 'status' formatter
+];
 
 const Modalidades: React.FC = () => {
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isModalidadeModalOpen, setIsModalidadeModalOpen] = useState<boolean>(false);
-  const [modalidadeModalMode, setModalidadeModalMode] = useState<ModalMode>(ModalMode.CREATE);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>(ModalMode.CREATE);
   const [selectedModalidade, setSelectedModalidade] = useState<Modalidade | null>(null);
-  const [generalError, setGeneralError] = useState<string | null>(null);
-
-  const [filters, setFilters] = useState<TableFilters>({ search: "", currentPage: 1, rowsPerPage: 10 });
-  const [totalRows, setTotalRows] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Debounce hook
-  const useDebounce = (value: string, delay: number) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-      const handler = setTimeout(() => {
-        setDebouncedValue(value);
-      }, delay);
-
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [value, delay]);
-
-    return debouncedValue;
-  };
-
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-
-  const fetchModalidades = useCallback(async (searchQuery: string = "", page: number = 1, pageSize: number = 10) => {
+  const fetchModalidades = useCallback(async () => {
     setIsLoading(true);
-    setGeneralError(null);
-    try {
-      let query = supabase
-        .from("modalidades")
-        .select("*", { count: 'exact' })
-        .order("nome", { ascending: true });
+    // In a real app, you would fetch from Supabase:
+    const { data, error } = await supabase
+      .from('modalidades') // Ensure this is your actual table name
+      .select('*')
+      .order('nome', { ascending: true });
 
-      // Aplicar filtro de busca se fornecido
-      if (searchQuery.trim()) {
-        query = query.ilike('nome', `%${searchQuery}%`);
-      }
-
-      // Aplicar paginação
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error("Erro ao buscar modalidades:", error.message);
-        toast.error("Falha ao carregar modalidades.");
-        setGeneralError("Não foi possível carregar as modalidades.");
-        setModalidades([]);
-        setTotalRows(0);
-      } else if (data) {
-        setModalidades(data as Modalidade[]);
-        setTotalRows(count || 0);
-      }
-    } catch (err: any) {
-      console.error("Erro inesperado ao buscar modalidades:", err.message);
-      toast.error("Erro crítico ao buscar modalidades.");
-      setGeneralError("Ocorreu um erro inesperado.");
-      setModalidades([]);
-      setTotalRows(0);
-    } finally {
-      setIsLoading(false);
+    if (error) {
+      toast.error("Erro ao buscar modalidades.");
+      console.error("Supabase error:", error);
+      setModalidades([]); // Set to empty array on error
+    } else if (data) {
+      setModalidades(data as Modalidade[]);
+    } else {
+      setModalidades([]); // Set to empty array if no data
     }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
     fetchModalidades();
   }, [fetchModalidades]);
 
-  // Efeito para buscar quando o termo de busca mudar (com debounce)
-  useEffect(() => {
-    fetchModalidades(debouncedSearchTerm, filters.currentPage, filters.rowsPerPage);
-  }, [debouncedSearchTerm, filters.currentPage, filters.rowsPerPage, fetchModalidades]);
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  };
 
-  const handleCloseModalidadeModal = () => {
-    setIsModalidadeModalOpen(false);
+  const filteredModalidades = modalidades.filter((modalidade) =>
+    normalizeText(modalidade.nome).includes(normalizeText(searchTerm))
+  );
+
+  const totalRows = filteredModalidades.length;
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+  const currentData = filteredModalidades.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRowsPerPageChange = (rows: number) => {
+    setRowsPerPage(rows);
+    setCurrentPage(1); // Reset to first page when rows per page changes
+  };
+
+  const openCreateModal = () => {
     setSelectedModalidade(null);
+    setModalMode(ModalMode.CREATE);
+    setModalOpen(true);
   };
 
-  const handleModalidadeSaveComplete = (
-    error: any | null,
-    _savedData?: ModalidadeFormData,
-    mode?: ModalMode
-  ) => {
-    if (error) {
-      toast.error(`Erro ao ${mode === ModalMode.CREATE ? 'cadastrar' : 'atualizar'} modalidade: ${error.message || 'Erro desconhecido'}`);
-    } else {
-      toast.success(`Modalidade ${mode === ModalMode.CREATE ? 'cadastrada' : 'atualizada'} com sucesso!`);
-      fetchModalidades(debouncedSearchTerm, filters.currentPage, filters.rowsPerPage);
-    }
-  };
-
-  const openCreateModalidadeModal = () => {
-    setSelectedModalidade(null);
-    setModalidadeModalMode(ModalMode.CREATE);
-    setIsModalidadeModalOpen(true);
-  };
-
-  const openEditModalidadeModal = (modalidade: Modalidade) => {
+  const openViewModal = (modalidade: Modalidade) => {
     setSelectedModalidade(modalidade);
-    setModalidadeModalMode(ModalMode.EDIT);
-    setIsModalidadeModalOpen(true);
+    setModalMode(ModalMode.VIEW);
+    setModalOpen(true);
   };
 
-  const columns: TableColumn<Modalidade>[] = [
-    { field: "nome", header: "Nome", width: 400 },
-  ];
-
-  const getModalidadeModalInitialData = (): Partial<ModalidadeFormData> | undefined => {
-    if (!selectedModalidade) return undefined;
-    return {
-      nome: selectedModalidade.nome,
-    };
+  const openEditModal = (modalidade: Modalidade) => {
+    setSelectedModalidade(modalidade);
+    setModalMode(ModalMode.EDIT);
+    setModalOpen(true);
   };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedModalidade(null);
+  };
+
+  const handleSaveComplete = useCallback(
+    (error: any | null, savedData?: Modalidade, operationMode?: ModalMode) => {
+      if (error) {
+        toast.error(
+          `Erro ao ${
+            operationMode === ModalMode.CREATE ? "cadastrar" : "atualizar"
+          } modalidade: ${error.message || "Erro desconhecido"}`
+        );
+      } else {
+        toast.success(
+          `Modalidade ${
+            operationMode === ModalMode.CREATE ? "cadastrada" : "atualizada"
+          } com sucesso!`
+        );
+        fetchModalidades(); // Refresh data
+        handleCloseModal();
+      }
+    },
+    [fetchModalidades] // Add fetchModalidades to dependencies
+  );
+
+  const getInitialModalData = (): Partial<Modalidade> | undefined => {
+    if ((modalMode === ModalMode.EDIT || modalMode === ModalMode.VIEW) && selectedModalidade) {
+      return selectedModalidade; // Pass the whole selectedModalidade object
+    }
+    return undefined; // Or { nome: '', ativo: true } for create mode if not handled in modal
+  };
+
 
   return (
-    <Styles.PageContainer>
-      <Styles.HeaderContainer>
+    <Styles.Container>
+      <Styles.Header>
         <div>
-          <Styles.Title>Gerenciamento de Modalidades</Styles.Title>
-          <Styles.Subtitle>
-            Cadastre, edite e visualize as modalidades.
-          </Styles.Subtitle>
+          <Styles.Title>Modalidades</Styles.Title>
+          <Styles.Subtitle>Cadastre e gerencie suas modalidades</Styles.Subtitle>
         </div>
-        <Styles.AddButton onClick={openCreateModalidadeModal}>
-          <FiPlus size={18} style={{ marginRight: '8px' }} /> Cadastrar Modalidade
-        </Styles.AddButton>
-      </Styles.HeaderContainer>
+        <Styles.CadastrarButton onClick={openCreateModal}>
+          <FiPlus /> Nova Modalidade
+        </Styles.CadastrarButton>
+      </Styles.Header>
 
-      {isLoading && !modalidades.length && !generalError ? (
-        <Styles.LoaderContainer>
-          <Loader color={Styles.COLORS.primary} />
-        </Styles.LoaderContainer>
-      ) : generalError ? (
-        <Styles.ErrorContainer>{generalError}</Styles.ErrorContainer>
+      {isLoading && !modalOpen ? (
+        <Styles.LoaderDiv>
+          <Loader color="#000" /> {/* Adjust loader color if needed */}
+        </Styles.LoaderDiv>
       ) : (
         <>
-          <Styles.SearchInputContainer>
-            <Styles.SearchInput
+          <div style={{ maxWidth: 400, marginBottom: '20px' }}>
+            <Styles.Input
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setFilters(prev => ({ ...prev, currentPage: 1 }));
-              }}
-              placeholder="Pesquisar por nome..."
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Pesquisar Modalidade por Nome"
             />
-          </Styles.SearchInputContainer>
-
+          </div>
           <DefaultTable
-            data={modalidades}
-            columns={columns as any}
-            rowsPerPage={filters.rowsPerPage}
-            currentPage={filters.currentPage}
+            data={currentData}
+            columns={columns}
+            rowsPerPage={rowsPerPage}
+            currentPage={currentPage}
             totalRows={totalRows}
-            onPageChange={(page) => setFilters((prev: TableFilters) => ({ ...prev, currentPage: page }))}
-            onRowsPerPageChange={(r) => setFilters((prev: TableFilters) => ({ ...prev, rowsPerPage: r, currentPage: 1 }))}
-            onRowClick={openEditModalidadeModal}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            showActions
+            noDelete // Assuming no delete functionality for now
+            onView={openViewModal}
+            onEdit={openEditModal}
+            // onDelete will be implemented later if needed
           />
         </>
       )}
 
-      {isModalidadeModalOpen && (
+      {modalOpen && (
         <ModalidadeModal
-          open={isModalidadeModalOpen}
-          mode={modalidadeModalMode}
-          onClose={handleCloseModalidadeModal}
-          initialData={getModalidadeModalInitialData()}
-          modalidadeIdToEdit={selectedModalidade?.id}
-          onSaveComplete={handleModalidadeSaveComplete}
+          open={modalOpen}
+          mode={modalMode}
+          initialData={getInitialModalData()}
+          modalidadeIdToEdit={modalMode === ModalMode.EDIT && selectedModalidade ? selectedModalidade.id : undefined}
+          onClose={handleCloseModal}
+          onSaveComplete={handleSaveComplete}
         />
       )}
+
       <ToastContainer autoClose={3000} hideProgressBar />
-    </Styles.PageContainer>
+    </Styles.Container>
   );
 };
 

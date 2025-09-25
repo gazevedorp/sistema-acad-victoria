@@ -4,7 +4,8 @@ export enum ModalMode {
   VIEW,
 }
 
-export interface ModalidadeFormData {
+export interface ProdutoFormData {
   nome: string;
+  valor: number;
   ativo: boolean;
 }

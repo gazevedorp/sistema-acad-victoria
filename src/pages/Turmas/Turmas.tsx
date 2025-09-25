@@ -1,164 +1,69 @@
 import React, { useEffect, useState, useCallback } from "react";
 import DefaultTable, { TableColumn } from "../../components/Table/DefaultTable";
-import { supabase } from "../../lib/supabase";
-import { Turma, ModalidadeBasicInfo, TurmaFormData } from "../../types/TurmaTypes";
+import { supabase } from "../../lib/supabase.ts";
+import { Turma } from "../../types/TurmaTypes.ts";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Loader from "../../components/Loader/Loader";
+import Loader from "../../components/Loader/Loader.tsx";
 import * as Styles from "./Turmas.styles";
-import TurmaModal from "./components/TurmaModal/TurmaModal";
-import { ModalMode } from "./components/TurmaModal/TurmaModal.definitions";
+import TurmaModal from "./components/TurmaModal/TurmaModal.tsx";
+import { ModalMode } from "./components/TurmaModal/TurmaModal.definitions.ts";
 import { FiPlus } from "react-icons/fi";
+
+const columns: TableColumn<Turma>[] = [
+  { field: "nome", header: "Nome" },
+  { field: "ativo", header: "Status", formatter: "status" },
+];
 
 const Turmas: React.FC = () => {
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [modalidades, setModalidades] = useState<ModalidadeBasicInfo[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isTurmaModalOpen, setIsTurmaModalOpen] = useState<boolean>(false);
-  const [turmaModalMode, setTurmaModalMode] = useState<ModalMode>(ModalMode.CREATE);
-  const [selectedTurma, setSelectedTurma] = useState<Turma | null>(null);
-  const [generalError, setGeneralError] = useState<string | null>(null);
-
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [inputSearch, setInputSearch] = useState<string>("");
-  const [totalRows, setTotalRows] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Debounce hook
-  const useDebounce = (value: string, delay: number) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>(ModalMode.CREATE);
+  const [selectedTurma, setSelectedTurma] = useState<Turma | null>(null);
 
-    useEffect(() => {
-      const handler = setTimeout(() => {
-        setDebouncedValue(value);
-      }, delay);
-
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [value, delay]);
-
-    return debouncedValue;
-  };
-
-  const debouncedSearchTerm = useDebounce(inputSearch, 500);
-
-  const fetchTurmas = useCallback(async (searchQuery: string = "", page: number = 1, pageSize: number = 10) => {
+  const fetchTurmas = useCallback(async () => {
     setIsLoading(true);
-    setGeneralError(null);
-    try {
-      let query = supabase
-        .from("turmas")
-        .select("*, modalidade:modalidade_id(nome)", { count: 'exact' })
-        .order("nome", { ascending: true });
-
-      // Aplicar filtro de busca se fornecido
-      if (searchQuery.trim()) {
-        query = query.ilike('nome', `%${searchQuery}%`);
-      }
-
-      // Aplicar paginação
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error("Erro ao buscar turmas:", error.message);
-        toast.error("Falha ao carregar turmas.");
-        setGeneralError("Não foi possível carregar as turmas.");
-        setTurmas([]);
-        setTotalRows(0);
-      } else if (data) {
-        const adjustedData = data.map(t => ({
-          ...t,
-          modalidade_nome: (t.modalidade as any)?.nome || 'N/A',
-        }));
-        setTurmas(adjustedData as any[]);
-        setTotalRows(count || 0);
-      }
-    } catch (err: any) {
-      console.error("Erro inesperado ao buscar turmas:", err.message);
-      toast.error("Erro crítico ao buscar turmas.");
-      setGeneralError("Ocorreu um erro inesperado.");
+    const { data, error } = await supabase
+      .from("turmas")
+      .select("*")
+      .order("nome", { ascending: true });
+    if (error) {
+      toast.error("Erro ao buscar turmas.");
+      console.error("Supabase error:", error);
       setTurmas([]);
-      setTotalRows(0);
-    } finally {
-      setIsLoading(false);
+    } else if (data) {
+      setTurmas(data as Turma[]);
+    } else {
+      setTurmas([]);
     }
-  }, []);
-
-  const fetchModalidades = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("modalidades")
-        .select("id, nome")
-        .order("nome", { ascending: true });
-
-      if (error) {
-        console.error("Erro ao buscar modalidades:", error.message);
-        toast.error("Falha ao carregar modalidades para o formulário.");
-        setModalidades([]);
-      } else if (data) {
-        setModalidades(data as ModalidadeBasicInfo[]);
-      }
-    } catch (err: any) {
-      console.error("Erro inesperado ao buscar modalidades:", err.message);
-      toast.error("Erro crítico ao buscar modalidades.");
-      setModalidades([]);
-    }
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
     fetchTurmas();
-    fetchModalidades();
-  }, [fetchTurmas, fetchModalidades]);
+  }, [fetchTurmas]);
 
-  // Efeito para buscar quando o termo de busca mudar (com debounce)
-  useEffect(() => {
-    fetchTurmas(debouncedSearchTerm, currentPage, rowsPerPage);
-  }, [debouncedSearchTerm, currentPage, rowsPerPage, fetchTurmas]);
-
-  const handleCloseTurmaModal = () => {
-    setIsTurmaModalOpen(false);
-    setSelectedTurma(null);
+  const normalizeText = (text: string | undefined | null): string => {
+    if (!text) return "";
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   };
 
-  const handleTurmaSaveComplete = (
-    error: any | null,
-    _savedData?: TurmaFormData,
-    mode?: ModalMode
-  ) => {
-    if (error) {
-      toast.error(`Erro ao ${mode === ModalMode.CREATE ? 'cadastrar' : 'atualizar'} turma: ${error.message || 'Erro desconhecido'}`);
-    } else {
-      toast.success(`Turma ${mode === ModalMode.CREATE ? 'cadastrada' : 'atualizada'} com sucesso!`);
-      fetchTurmas(debouncedSearchTerm, currentPage, rowsPerPage);
-    }
-    // Modal is closed by TurmaModal itself on successful save.
-    // If error, it remains open for user to see/correct.
-  };
+  const filteredTurmas = turmas.filter((turma) =>
+    normalizeText(turma.nome).includes(normalizeText(searchTerm))
+  );
 
-  const openCreateTurmaModal = () => {
-    setSelectedTurma(null);
-    setTurmaModalMode(ModalMode.CREATE);
-    setIsTurmaModalOpen(true);
-  };
-
-  const openEditTurmaModal = (turma: Turma) => {
-    setSelectedTurma(turma);
-    setTurmaModalMode(ModalMode.EDIT);
-    setIsTurmaModalOpen(true);
-  };
-
-  const columns: TableColumn<Turma>[] = [
-    { field: "nome", header: "Nome", width: 200 },
-    { field: "capacidade", header: "Capacidade", width: 120 },
-    { field: "horarios_descricao", header: "Horários", width: 250 },
-    { field: "modalidade_nome", header: "Modalidade", width: 150 },
-    { field: "ativo", header: "Status", formatter: "status", width: 100, textAlign: 'center' },
-  ];
+  const totalRows = filteredTurmas.length;
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+  const currentData = filteredTurmas.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -169,80 +74,112 @@ const Turmas: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // Prepare initialData for TurmaModal carefully
-  const getTurmaModalInitialData = (): Partial<TurmaFormData> | undefined => {
-    if (!selectedTurma) return undefined;
-    // Ensure all fields expected by TurmaFormData are present
-    return {
-      nome: selectedTurma.nome,
-      capacidade: selectedTurma.capacidade,
-      horarios_descricao: selectedTurma.horarios_descricao,
-      descricao: selectedTurma.descricao || '', // Ensure null/undefined becomes empty string if schema expects string
-      modalidade_id: selectedTurma.modalidade_id,
-      ativo: selectedTurma.ativo,
-    };
+  const openCreateModal = () => {
+    setSelectedTurma(null);
+    setModalMode(ModalMode.CREATE);
+    setModalOpen(true);
+  };
+
+  const openEditModal = (turma: Turma) => {
+    setSelectedTurma(turma);
+    setModalMode(ModalMode.EDIT);
+    setModalOpen(true);
+  };
+
+  const openViewModal = (turma: Turma) => {
+    setSelectedTurma(turma);
+    setModalMode(ModalMode.VIEW);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setSelectedTurma(null);
+  };
+
+  const handleSaveComplete = useCallback(
+    (error: any | null, _savedData?: Turma, operationMode?: ModalMode) => {
+      if (error) {
+        toast.error(
+          `Erro ao ${
+            operationMode === ModalMode.CREATE ? "cadastrar" : "atualizar"
+          } turma: ${error.message || "Erro desconhecido"}`
+        );
+      } else {
+        toast.success(
+          `Turma ${
+            operationMode === ModalMode.CREATE ? "cadastrada" : "atualizada"
+          } com sucesso!`
+        );
+        fetchTurmas();
+        handleCloseModal();
+      }
+    },
+    [fetchTurmas]
+  );
+
+  const getInitialModalData = (): Partial<Turma> | undefined => {
+    if ((modalMode === ModalMode.EDIT || modalMode === ModalMode.VIEW) && selectedTurma) {
+      return selectedTurma;
+    }
+    return undefined;
   };
 
   return (
-    <Styles.PageContainer>
-      <Styles.HeaderContainer>
+    <Styles.Container>
+      <Styles.Header>
         <div>
-          <Styles.Title>Gerenciamento de Turmas</Styles.Title>
+          <Styles.Title>Turmas</Styles.Title>
           <Styles.Subtitle>
-            Cadastre, edite e visualize as turmas.
+            Cadastre e gerencie as Turmas de Alunos
           </Styles.Subtitle>
         </div>
-      </Styles.HeaderContainer>
+        <Styles.CadastrarButton onClick={openCreateModal}>
+          <FiPlus /> Nova Turma
+        </Styles.CadastrarButton>
+      </Styles.Header>
 
-      {isLoading && !turmas.length ? (
-        <Styles.LoaderContainer>
-          <Loader color={Styles.COLORS.primary} />
-        </Styles.LoaderContainer>
-      ) : generalError ? (
-        <Styles.ErrorContainer>{generalError}</Styles.ErrorContainer>
+      {isLoading && !modalOpen ? (
+        <Styles.LoaderDiv>
+          <Loader color="#000" />
+        </Styles.LoaderDiv>
       ) : (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
-              <Styles.SearchInput
-                value={inputSearch}
-                onChange={(e) => {
-                  setInputSearch(e.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Pesquisar por nome ou modalidade..."
-              />
-            </div>
-            <Styles.AddButton onClick={openCreateTurmaModal}>
-              <FiPlus size={18} style={{ marginRight: '8px' }} /> Cadastrar Turma
-            </Styles.AddButton>
+          <div style={{ maxWidth: 400, marginBottom: '20px' }}>
+            <Styles.Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Pesquisar Turma por Nome"
+            />
           </div>
           <DefaultTable
-            data={turmas}
+            data={currentData}
             columns={columns}
             rowsPerPage={rowsPerPage}
             currentPage={currentPage}
             totalRows={totalRows}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handleRowsPerPageChange}
-            onRowClick={openEditTurmaModal}
+            showActions={true}
+            onEdit={openEditModal}
+            onView={openViewModal}
+            noDelete={true}
           />
         </>
       )}
 
-      {isTurmaModalOpen && (
+      {modalOpen && (
         <TurmaModal
-          open={isTurmaModalOpen}
-          mode={turmaModalMode}
-          onClose={handleCloseTurmaModal}
-          initialData={getTurmaModalInitialData()}
-          turmaIdToEdit={selectedTurma?.id}
-          modalidades={modalidades}
-          onSaveComplete={handleTurmaSaveComplete}
+          open={modalOpen}
+          mode={modalMode}
+          initialData={getInitialModalData()}
+          turmaIdToEdit={ (modalMode === ModalMode.EDIT || modalMode === ModalMode.VIEW) && selectedTurma ? selectedTurma.id : undefined}
+          onClose={handleCloseModal}
+          onSaveComplete={handleSaveComplete}
         />
       )}
       <ToastContainer autoClose={3000} hideProgressBar />
-    </Styles.PageContainer>
+    </Styles.Container>
   );
 };
 

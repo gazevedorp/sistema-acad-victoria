@@ -1,17 +1,18 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useEffect, useMemo, useCallback } from "react";
 import * as Styles from "./Sidebar.styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FiHome,
+  FiUser,
   FiPackage,
+  // FiUsers,
+  // FiBarChart2,
   FiLogOut,
   FiTable,
   FiFile,
-  FiSettings,
-  FiShield,
-  FiLayout,
+  FiBox,
+  FiList, // Added FiList for Modalidades
 } from "react-icons/fi";
-import { FaUserFriends } from "react-icons/fa";
 import { useAuthStore } from "../../store/authStore";
 
 const useIsMobile = () => {
@@ -38,57 +39,32 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
-  const hasPermission = useAuthStore((state) => state.hasPermission);
   const isMobile = useIsMobile();
   const location = useLocation();
 
   const effectiveMinimized = isMobile ? true : minimized;
 
-  const menuItems = useMemo(() => {
-    const items = [];
+  const menuItems = useMemo(() => [
+    { icon: <FiHome />, text: "Home [F1]", route: "/" },
+    // { icon: <FiUser />, text: "Alunos [F2]", route: "/clients" },
+    // { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
+    { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
+    { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
+    { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
+    { icon: <FiList />, text: "Modalidades [F7]", route: "/modalidades" }, // Added Modalidades
+    // { icon: <FiBarChart2 />, text: "Relatorios [F8]", route: "/relatorios" }, // Adjusted F-key if needed
+  ], []);
 
-    // Home - sempre visível se tiver acesso
-    if (hasPermission('home', 'visualizar')) {
-      items.push({ icon: <FiHome />, text: "Home", route: "/" });
-    }
-
-    // Turmas
-    if (hasPermission('turmas', 'visualizar')) {
-      items.push({ icon: <FiTable />, text: "Turmas", route: "/turmas" });
-    }
-
-    // Modalidades
-    if (hasPermission('modalidades', 'visualizar')) {
-      items.push({ icon: <FiSettings />, text: "Modalidades", route: "/modalidades" });
-    }
-
-    // Planos
-    if (hasPermission('planos', 'visualizar')) {
-      items.push({ icon: <FiFile />, text: "Planos", route: "/planos" });
-    }
-
-    // Produtos
-    if (hasPermission('produtos', 'visualizar')) {
-      items.push({ icon: <FiPackage />, text: "Produtos", route: "/products" });
-    }
-
-    // Usuários
-    if (hasPermission('usuarios', 'visualizar')) {
-      items.push({ icon: <FaUserFriends />, text: "Usuários", route: "/users" });
-    }
-
-    // Permissões
-    if (hasPermission('permissoes', 'visualizar')) {
-      items.push({ icon: <FiShield />, text: "Permissões", route: "/permissoes" });
-    }
-
-    // Templates de Fechamento
-    if (hasPermission('templates_fechamento', 'visualizar')) {
-      items.push({ icon: <FiLayout />, text: "Templates", route: "/templates-fechamento" });
-    }
-
-    return items;
-  }, [hasPermission]);
+  const keyRouteMap = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    menuItems.forEach(item => {
+      const match = item.text.match(/\[(F\d+)\]/);
+      if (match && match[1]) {
+        map[match[1]] = item.route;
+      }
+    });
+    return map;
+  }, [menuItems]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -98,6 +74,28 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
       console.error("Erro ao fazer logout:", err);
     }
   }, [logout, navigate]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const route = keyRouteMap[event.key];
+
+      if (route) {
+        event.preventDefault();
+        navigate(route);
+      } else if (event.key === 'F12') {
+        event.preventDefault();
+        if (window.confirm("Tem certeza que deseja sair?")) {
+          handleLogout();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [navigate, keyRouteMap, handleLogout]);
 
   return (
     <Styles.SidebarContainer minimized={effectiveMinimized}>
@@ -133,15 +131,15 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
       <Styles.SidebarMenuItem
         minimized={effectiveMinimized}
         onClick={() => {
-          if (window.confirm("Tem certeza que deseja sair?")) {
-            handleLogout();
-          }
+            if (window.confirm("Tem certeza que deseja sair?")) {
+                handleLogout();
+            }
         }}
       >
         <Styles.IconWrapper minimized={effectiveMinimized}>
           <FiLogOut />
         </Styles.IconWrapper>
-        {!effectiveMinimized && <Styles.MenuText>Sair</Styles.MenuText>}
+        {!effectiveMinimized && <Styles.MenuText>Sair [F12]</Styles.MenuText>}
       </Styles.SidebarMenuItem>
     </Styles.SidebarContainer>
   );

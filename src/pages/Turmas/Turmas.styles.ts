@@ -1,117 +1,104 @@
 import styled from 'styled-components';
-import { COLORS } from '../../styles/colors';
 
-export { COLORS }; // Re-export for use in Turmas.tsx if needed (e.g. for Loader color)
-
-export const PageContainer = styled.div`
+export const Container = styled.div`
   width: 100%;
   padding: 24px;
-  background-color: ${COLORS.white};
-  min-height: 100vh;
+  background-color: #fff;
 `;
 
-export const HeaderContainer = styled.div`
-  background-color: ${COLORS.white};
-  border-radius: 8px;
+export const Header = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 `;
 
 export const Title = styled.h1`
-  font-size: 1.75rem;
-  margin: 0;
+  font-size: 32px;
+  margin: 0 0 8px 0;
   font-weight: 600;
-  color: ${COLORS.textBody};
 `;
 
 export const Subtitle = styled.p`
-  font-size: 0.9rem;
-  color: ${COLORS.textMuted};
-  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: #888;
+  margin: 0;
 `;
 
-export const AddButton = styled.button`
-  background-color: ${COLORS.primary};
-  color: ${COLORS.white};
-  font-size: 0.9rem;
-  font-weight: 500;
-  padding: 10px 18px;
+export const CadastrarButton = styled.button`
+  color: #fff;
   border: none;
-  border-radius: 6px;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 4px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease-in-out;
-
+  padding-bottom: 10px;
+  align-self: flex-start;
+  background: #0d88cb;
   &:hover {
-    background-color: ${COLORS.primaryDarker};
-  }
-
-  &:disabled {
-    background-color: ${COLORS.backgroundDisabled};
-    color: ${COLORS.textMuted};
-    cursor: not-allowed;
+    background: #0898e6;
   }
 `;
 
-export const SearchInputContainer = styled.div`
-  margin-bottom: 20px;
-  background-color: ${COLORS.white};
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+export const ActionIconsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
 `;
 
-export const SearchInput = styled.input`
-  padding: 10px 14px;
-  font-size: 0.9rem;
-  border: 1px solid ${COLORS.borderDefault};
-  border-radius: 6px;
+export const ActionLabel = styled.span`
+  margin-right: 8px;
+  font-size: 14px;
+  color: #666;
+`;
+
+export const LoaderDiv = styled.div`
+  height: 160px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+export const Input = styled.input`
+  padding: 0.625rem 0.75rem; // 10px 12px
+  font-size: 0.875rem;
+  border: 1px solid #cbd5e0; // Tailwind gray-400 border
+  border-radius: 6px; // Slightly more rounded
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   width: 100%;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: #fff;
+  color: #2d3748; // Tailwind gray-800
 
   &:focus {
-    border-color: ${COLORS.primary};
-    box-shadow: 0 0 0 0.2rem ${COLORS.primaryLightFocus};
+    border-color: #8431dc;
     outline: none;
+    box-shadow: 0 0 0 3px rgba(132, 49, 220, 0.25);
   }
-`;
 
-export const LoaderContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
-  min-height: 200px;
-`;
+  // Style readOnly inputs like disabled but allow focus/selection
+  &[readOnly] {
+    background-color: #f7fafc; // Tailwind gray-100
+    color: #718096; // Tailwind gray-600
+    // cursor: not-allowed; // Optional: remove if selection is desired
+    border-color: #e2e8f0; // Tailwind gray-300
+    &:focus {
+      // Keep focus style distinct
+      border-color: #8431dc;
+      box-shadow: 0 0 0 3px rgba(132, 49, 220, 0.25);
+    }
+  }
 
-export const ErrorContainer = styled.div`
-  text-align: center;
-  padding: 40px;
-  color: ${COLORS.danger};
-  font-size: 1rem;
-  background-color: ${COLORS.white};
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-`;
-
-export const ActionButton = styled.button<{variant?: 'primary' | 'secondary' | 'danger'}>`
-  background: none;
-  border: none;
-  padding: 6px;
-  cursor: pointer;
-  color: ${({variant}) =>
-    variant === 'danger' ? COLORS.danger :
-    (variant === 'secondary' ? COLORS.textMuted : COLORS.primary)
-  };
-
-  &:hover {
-    opacity: 0.7;
-    color: ${({variant}) =>
-      variant === 'danger' ? COLORS.danger :
-      (variant === 'secondary' ? COLORS.textMuted : COLORS.primaryDarker)
-    };
+  // Style number inputs - hide spinners on Chrome/Safari/Edge
+  &[type="number"]::-webkit-inner-spin-button,
+  &[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 `;

@@ -1,16 +1,16 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import * as Styles from "./TurmaModal.styles";
+import * as Styles from "./ProdutoModal.styles";
 import {
   ModalMode,
-  TurmaFormData,
-} from "./TurmaModal.definitions";
-import { Turma } from "../../../../types/TurmaTypes";
+  ProdutoFormData,
+} from "./ProdutoModal.definitions";
+import { Product } from "../../../../types/ProductType"; // Corrected import
 import { supabase } from "../../../../lib/supabase";
 
 // TODO: Implement yup schema and resolver for validation if needed
 // import { yupResolver } from "@hookform/resolvers/yup";
-// import { turmaSchema } from "./TurmaModal.validation";
+// import { produtoSchema } from "./ProdutoModal.validation";
 
 interface BaseModalProps {
   open: boolean;
@@ -18,32 +18,33 @@ interface BaseModalProps {
   onClose: () => void;
 }
 
-interface TurmaModalProps extends BaseModalProps {
-  initialData?: Partial<Turma>;
-  turmaIdToEdit?: string;
+interface ProdutoModalProps extends BaseModalProps {
+  initialData?: Partial<Product>;
+  produtoIdToEdit?: string;
   onSaveComplete?: (
     error: any | null,
-    savedData?: Turma,
+    savedData?: Product,
     mode?: ModalMode
   ) => void;
 }
 
-const TurmaModal: React.FC<TurmaModalProps> = ({
+const ProdutoModal: React.FC<ProdutoModalProps> = ({
   open,
   mode,
   onClose,
   initialData,
-  turmaIdToEdit,
+  produtoIdToEdit,
   onSaveComplete,
 }) => {
   const isViewMode = mode === ModalMode.VIEW;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const defaultFormValues: TurmaFormData = useMemo(
+  const defaultFormValues: ProdutoFormData = useMemo(
     () => ({
       nome: "",
+      valor: 0, // 'valor' field directly used, no 'valor_mensal' mapping
       ativo: true,
-      ...(initialData || {}), // Directly spread initialData as fields match TurmaFormData
+      ...(initialData || {}), // Fields in Product and ProdutoFormData match (nome, valor, ativo)
     }),
     [initialData]
   );
@@ -55,8 +56,8 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
     reset,
     setValue,
     watch,
-  } = useForm<TurmaFormData>({
-    // resolver: yupResolver(turmaSchema), // Uncomment if using yup
+  } = useForm<ProdutoFormData>({
+    // resolver: yupResolver(produtoSchema), // Uncomment if using yup
     defaultValues: defaultFormValues,
   });
 
@@ -64,7 +65,7 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
     if (open) {
       const dataToReset =
         mode === ModalMode.CREATE
-          ? { nome: "", ativo: true }
+          ? { nome: "", valor: 0, ativo: true }
           : { ...defaultFormValues, ...initialData };
       reset(dataToReset);
     }
@@ -72,38 +73,38 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
 
   const watchedAtivo = watch("ativo");
 
-  const onSubmit: SubmitHandler<TurmaFormData> = async (formData) => {
+  const onSubmit: SubmitHandler<ProdutoFormData> = async (formData) => {
     if (isViewMode) return;
     setIsSubmitting(true);
 
-    // Fields in TurmaFormData directly match Turma table structure (nome, ativo)
+    // formData directly matches the 'produtos' table structure (nome, valor, ativo)
     const dataToSave = { ...formData };
 
     try {
-      let savedResult: Turma | undefined;
+      let savedResult: Product | undefined;
       if (mode === ModalMode.CREATE) {
-        const { data: newTurma, error } = await supabase
-          .from("turmas") // Target 'turmas' table
+        const { data: newProduto, error } = await supabase
+          .from("produtos") // Target 'produtos' table
           .insert([dataToSave])
           .select()
           .single();
         if (error) throw error;
-        savedResult = newTurma as Turma;
-      } else if (mode === ModalMode.EDIT && turmaIdToEdit) {
-        const { data: updatedTurma, error } = await supabase
-          .from("turmas") // Target 'turmas' table
+        savedResult = newProduto as Product;
+      } else if (mode === ModalMode.EDIT && produtoIdToEdit) {
+        const { data: updatedProduto, error } = await supabase
+          .from("produtos") // Target 'produtos' table
           .update(dataToSave)
-          .eq("id", turmaIdToEdit)
+          .eq("id", produtoIdToEdit)
           .select()
           .single();
         if (error) throw error;
-        savedResult = updatedTurma as Turma;
+        savedResult = updatedProduto as Product;
       }
       onSaveComplete?.(null, savedResult, mode);
       onClose();
     } catch (error: any) {
-      console.error("Error saving turma:", error.message || error);
-      onSaveComplete?.(error, { ...formData, id: turmaIdToEdit || "" } as Turma, mode);
+      console.error("Error saving produto:", error.message || error);
+      onSaveComplete?.(error, { ...formData, id: produtoIdToEdit || "" } as Product, mode);
     } finally {
       setIsSubmitting(false);
     }
@@ -116,9 +117,9 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
       <Styles.ModalContainer>
         <Styles.ModalHeader>
           <Styles.ModalTitle>
-            {mode === ModalMode.CREATE && "Nova Turma"}
-            {mode === ModalMode.VIEW && "Detalhes da Turma"}
-            {mode === ModalMode.EDIT && "Editar Turma"}
+            {mode === ModalMode.CREATE && "Novo Produto"}
+            {mode === ModalMode.VIEW && "Detalhes do Produto"}
+            {mode === ModalMode.EDIT && "Editar Produto"}
           </Styles.ModalTitle>
           <Styles.CloseButton onClick={onClose}>×</Styles.CloseButton>
         </Styles.ModalHeader>
@@ -126,7 +127,7 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
         <Styles.ModalBody>
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
-              <Styles.Label htmlFor="nome">Nome da Turma</Styles.Label>
+              <Styles.Label htmlFor="nome">Nome do Produto</Styles.Label>
               <Styles.Input
                 id="nome"
                 {...register("nome", { required: "Nome é obrigatório" })}
@@ -135,6 +136,25 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
               />
               {errors.nome && (
                 <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <Styles.FormGroup style={{marginTop: '10px'}}>
+              <Styles.Label htmlFor="valor">Valor (R$)</Styles.Label>
+              <Styles.Input
+                id="valor" // Changed from valor_mensal
+                type="number"
+                step="0.01"
+                {...register("valor", { // Changed from valor_mensal
+                  required: "Valor é obrigatório",
+                  valueAsNumber: true,
+                  min: { value: 0, message: "Valor não pode ser negativo" }
+                })}
+                disabled={isViewMode}
+                placeholder="Ex: 29.99"
+              />
+              {errors.valor && ( // Changed from valor_mensal
+                <Styles.ErrorMsg>{errors.valor.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
 
@@ -160,12 +180,12 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
                 htmlFor="ativo"
                 style={{ marginBottom: 0, fontWeight: "normal", cursor: isViewMode ? 'not-allowed': 'pointer' }}
               >
-                Ativa
+                Ativo
               </Styles.Label>
             </Styles.FormGroup>
-            {errors.ativo && (
+            {errors.ativo &&
               <Styles.ErrorMsg>{errors.ativo.message}</Styles.ErrorMsg>
-            )}
+            }
 
             {!isViewMode && (
               <Styles.SubmitButtonContainer style={{ justifyContent: 'flex-end', marginTop: '20px' }}>
@@ -174,7 +194,7 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
                     ? "Salvando..."
                     : mode === ModalMode.EDIT
                     ? "Salvar Alterações"
-                    : "Salvar Turma"}
+                    : "Salvar Produto"}
                 </Styles.SubmitButton>
               </Styles.SubmitButtonContainer>
             )}
@@ -185,4 +205,4 @@ const TurmaModal: React.FC<TurmaModalProps> = ({
   );
 };
 
-export default TurmaModal;
+export default ProdutoModal;

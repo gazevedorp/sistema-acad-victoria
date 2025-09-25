@@ -1,196 +1,211 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useForm, SubmitHandler, Controller } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { supabase } from '../../../../lib/supabase';
-import { PlanoFormData } from '../../../../types/PlanoTypes';
-import { BasePlanoModalProps, ModalMode, planoSchema, defaultPlanoFormValues } from './PlanoModal.definitions';
-import * as Styles from './PlanoModal.styles';
-import Loader from '../../../../components/Loader/Loader'; // Assuming Loader path
+import React, { useState, useMemo, useEffect } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import * as Styles from "./PlanoModal.styles";
+import {
+  ModalMode,
+  PlanoFormData,
+} from "./PlanoModal.definitions";
+import { Plano } from "../../../../types/PlanoTypes";
+import { supabase } from "../../../../lib/supabase";
 
-const PlanoModal: React.FC<BasePlanoModalProps> = ({
+// TODO: Implement yup schema and resolver for validation if needed
+// import { yupResolver } from "@hookform/resolvers/yup";
+// import { planoSchema } from "./PlanoModal.validation";
+
+interface BaseModalProps {
+  open: boolean;
+  mode: ModalMode;
+  onClose: () => void;
+}
+
+interface PlanoModalProps extends BaseModalProps {
+  initialData?: Partial<Plano>;
+  planoIdToEdit?: string;
+  onSaveComplete?: (
+    error: any | null,
+    savedData?: Plano,
+    mode?: ModalMode
+  ) => void;
+}
+
+const PlanoModal: React.FC<PlanoModalProps> = ({
   open,
   mode,
   onClose,
   initialData,
   planoIdToEdit,
-  modalidades,
   onSaveComplete,
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const isViewMode = mode === ModalMode.VIEW;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isViewMode = useMemo(() => mode === ModalMode.VIEW, [mode]);
+  const defaultFormValues: PlanoFormData = useMemo(
+    () => ({
+      nome: "",
+      valor_mensal: 0, // Default to 0 for number input
+      ativo: true,
+      // Map 'valor' from initialData to 'valor_mensal' for the form
+      ...(initialData ? { ...initialData, valor_mensal: initialData.valor } : {}),
+    }),
+    [initialData]
+  );
 
   const {
-    control,
+    register,
     handleSubmit,
+    formState: { errors },
     reset,
-    formState: { errors, isDirty },
+    setValue,
+    watch,
   } = useForm<PlanoFormData>({
-    resolver: yupResolver(planoSchema),
-    defaultValues: defaultPlanoFormValues,
+    // resolver: yupResolver(planoSchema), // Uncomment if using yup
+    defaultValues: defaultFormValues,
   });
 
   useEffect(() => {
     if (open) {
-      setServerError(null);
-      if (mode === ModalMode.CREATE) {
-        reset(defaultPlanoFormValues);
-      } else if (initialData) {
-        // Ensure all form fields are reset with initialData or defaults
-        const dataToReset: PlanoFormData = {
-          nome: initialData.nome || defaultPlanoFormValues.nome,
-          modalidade_id: initialData.modalidade_id || defaultPlanoFormValues.modalidade_id,
-          valor_mensal: initialData.valor_mensal !== undefined ? initialData.valor_mensal : defaultPlanoFormValues.valor_mensal,
-          ativo: initialData.ativo !== undefined ? initialData.ativo : defaultPlanoFormValues.ativo,
-        };
-        reset(dataToReset);
-      }
+      const dataToReset =
+        mode === ModalMode.CREATE
+          ? { nome: "", valor_mensal: 0, ativo: true }
+          : {
+              ...defaultFormValues,
+              // Ensure initialData (with 'valor') is correctly mapped to form's 'valor_mensal'
+              ...(initialData ? { ...initialData, valor_mensal: initialData.valor } : {}),
+            };
+      reset(dataToReset);
     }
-  }, [open, mode, initialData, reset]);
+  }, [initialData, mode, reset, defaultFormValues, open]);
+
+  const watchedAtivo = watch("ativo");
 
   const onSubmit: SubmitHandler<PlanoFormData> = async (formData) => {
+    if (isViewMode) return;
     setIsSubmitting(true);
-    setServerError(null);
-    let savedData: PlanoFormData | undefined = undefined;
 
-    // Ensure numeric fields are correctly typed
-    const dataToSave: PlanoFormData = {
-      ...formData,
-      valor_mensal: Number(formData.valor_mensal),
+    // Map form's valor_mensal back to valor for Supabase
+    const dataToSave = {
+      nome: formData.nome,
+      valor: formData.valor_mensal,
+      ativo: formData.ativo,
     };
 
     try {
+      let savedResult: Plano | undefined;
       if (mode === ModalMode.CREATE) {
-        const { data: newPlano, error: insertError } = await supabase
-          .from('planos')
+        const { data: newPlano, error } = await supabase
+          .from("planos")
           .insert([dataToSave])
           .select()
           .single();
-        if (insertError) throw insertError;
-        savedData = newPlano as PlanoFormData;
+        if (error) throw error;
+        savedResult = newPlano as Plano;
       } else if (mode === ModalMode.EDIT && planoIdToEdit) {
-        const { data: updatedPlano, error: updateError } = await supabase
-          .from('planos')
+        const { data: updatedPlano, error } = await supabase
+          .from("planos")
           .update(dataToSave)
-          .eq('id', planoIdToEdit)
+          .eq("id", planoIdToEdit)
           .select()
           .single();
-        if (updateError) throw updateError;
-        savedData = updatedPlano as PlanoFormData;
+        if (error) throw error;
+        savedResult = updatedPlano as Plano;
       }
-      onSaveComplete(null, savedData, mode);
+      // Pass the original formData (with valor_mensal) or mapped savedResult back
+      onSaveComplete?.(null, savedResult, mode);
       onClose();
-    } catch (err: any) {
-      console.error(`Error ${mode === ModalMode.CREATE ? 'creating' : 'updating'} plano:`, err);
-      setServerError(err.message || 'Ocorreu um erro desconhecido.');
-      onSaveComplete(err, undefined, mode);
+    } catch (error: any) {
+      console.error("Error saving plano:", error.message || error);
+      // Pass formData (which includes valor_mensal) to the callback on error
+      onSaveComplete?.(error, { ...formData, id: planoIdToEdit || "" } as Plano, mode);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // --- KEYBOARD SHORTCUTS ---
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-
-      if (event.key === "Escape") {
-        if (open) {
-          event.preventDefault();
-          onClose();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, onClose]);
-
-  if (!open) {
-    return null;
-  }
+  if (!open) return null;
 
   return (
-    <Styles.ModalOverlay onClick={onClose}>
-      <Styles.ModalContainer onClick={(e) => e.stopPropagation()}>
+    <Styles.ModalOverlay>
+      <Styles.ModalContainer>
         <Styles.ModalHeader>
           <Styles.ModalTitle>
-            {mode === ModalMode.CREATE && 'Cadastrar Novo Plano'}
-            {mode === ModalMode.EDIT && 'Editar Plano'}
-            {mode === ModalMode.VIEW && 'Visualizar Plano'}
+            {mode === ModalMode.CREATE && "Novo Plano"}
+            {mode === ModalMode.VIEW && "Detalhes do Plano"}
+            {mode === ModalMode.EDIT && "Editar Plano"}
           </Styles.ModalTitle>
-          <Styles.CloseButton onClick={onClose} aria-label="Fechar modal">&times;</Styles.CloseButton>
+          <Styles.CloseButton onClick={onClose}>×</Styles.CloseButton>
         </Styles.ModalHeader>
+
         <Styles.ModalBody>
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
-            <Styles.FormRow>
-              <Styles.FormGroup style={{ flexGrow: 2 }}> {/* Nome takes more space */}
-                <Styles.Label htmlFor="nome">Nome do Plano</Styles.Label>
-                <Controller
-                  name="nome"
-                  control={control}
-                  render={({ field }) => <Styles.Input {...field} id="nome" readOnly={isViewMode} />}
-                />
-                {errors.nome && <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>}
-              </Styles.FormGroup>
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="modalidade_id">Modalidade</Styles.Label>
-                <Controller
-                  name="modalidade_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Styles.Select {...field} id="modalidade_id" disabled={isViewMode}>
-                      <option value="">Selecione uma modalidade</option>
-                      {modalidades.map((mod) => (
-                        <option key={mod.id} value={mod.id}>{mod.nome}</option>
-                      ))}
-                    </Styles.Select>
-                  )}
-                />
-                {errors.modalidade_id && <Styles.ErrorMsg>{errors.modalidade_id.message}</Styles.ErrorMsg>}
-              </Styles.FormGroup>
-            </Styles.FormRow>
-
-            <Styles.FormRow>
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="valor_mensal">Valor Mensal (R$)</Styles.Label>
-                <Controller
-                  name="valor_mensal"
-                  control={control}
-                  render={({ field }) => <Styles.Input {...field} id="valor_mensal" type="number" step="0.01" readOnly={isViewMode} />}
-                />
-                {errors.valor_mensal && <Styles.ErrorMsg>{errors.valor_mensal.message}</Styles.ErrorMsg>}
-              </Styles.FormGroup>
-            </Styles.FormRow>
-
             <Styles.FormGroup>
-              <Styles.CheckboxContainer>
-                <Controller
-                  name="ativo"
-                  control={control}
-                  render={({ field: { onChange, value, ref } }) => (
-                    <Styles.CheckboxInput
-                      type="checkbox"
-                      id="ativo"
-                      ref={ref}
-                      checked={!!value} // Ensure value is boolean
-                      onChange={onChange}
-                      disabled={isViewMode}
-                    />
-                  )}
-                />
-                <Styles.CheckboxLabel htmlFor="ativo">Ativo</Styles.CheckboxLabel>
-              </Styles.CheckboxContainer>
-              {errors.ativo && <Styles.ErrorMsg>{errors.ativo.message}</Styles.ErrorMsg>}
+              <Styles.Label htmlFor="nome">Nome do Plano</Styles.Label>
+              <Styles.Input
+                id="nome"
+                {...register("nome", { required: "Nome é obrigatório" })}
+                disabled={isViewMode}
+                autoFocus
+              />
+              {errors.nome && (
+                <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              )}
             </Styles.FormGroup>
 
-            {serverError && <Styles.ErrorMsg>{serverError}</Styles.ErrorMsg>}
+            <Styles.FormGroup style={{marginTop: '10px'}}>
+              <Styles.Label htmlFor="valor_mensal">Valor Mensal (R$)</Styles.Label>
+              <Styles.Input
+                id="valor_mensal"
+                type="number"
+                step="0.01" // For currency
+                {...register("valor_mensal", {
+                  required: "Valor é obrigatório",
+                  valueAsNumber: true,
+                  min: { value: 0, message: "Valor não pode ser negativo" }
+                })}
+                disabled={isViewMode}
+                placeholder="Ex: 99.90"
+              />
+              {errors.valor_mensal && (
+                <Styles.ErrorMsg>{errors.valor_mensal.message}</Styles.ErrorMsg>
+              )}
+            </Styles.FormGroup>
+
+            <Styles.FormGroup
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "15px",
+                marginBottom: "15px",
+              }}
+            >
+              <input
+                type="checkbox"
+                id="ativo"
+                {...register("ativo")}
+                disabled={isViewMode}
+                style={{ width: "auto", height: "16px", cursor: isViewMode ? 'not-allowed': 'pointer' }}
+                checked={watchedAtivo}
+                onChange={(e) => setValue("ativo", e.target.checked, { shouldValidate: true, shouldDirty: true })}
+              />
+              <Styles.Label
+                htmlFor="ativo"
+                style={{ marginBottom: 0, fontWeight: "normal", cursor: isViewMode ? 'not-allowed': 'pointer' }}
+              >
+                Ativo
+              </Styles.Label>
+            </Styles.FormGroup>
+            {errors.ativo && ( // Though checkbox errors are less common without complex validation
+              <Styles.ErrorMsg>{errors.ativo.message}</Styles.ErrorMsg>
+            )}
 
             {!isViewMode && (
-              <Styles.SubmitButtonContainer>
-                <Styles.SubmitButton type="submit" disabled={isSubmitting || (!isDirty && mode === ModalMode.EDIT)}>
-                  {isSubmitting ? <Loader color="#ffffff" /> : (mode === ModalMode.CREATE ? 'Cadastrar Plano' : 'Salvar Alterações')}
+              <Styles.SubmitButtonContainer style={{ justifyContent: 'flex-end', marginTop: '20px' }}>
+                <Styles.SubmitButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? "Salvando..." // Consider using a Loader component
+                    : mode === ModalMode.EDIT
+                    ? "Salvar Alterações"
+                    : "Salvar Plano"}
                 </Styles.SubmitButton>
               </Styles.SubmitButtonContainer>
             )}

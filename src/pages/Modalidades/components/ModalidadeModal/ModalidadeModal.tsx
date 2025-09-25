@@ -1,9 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "../../../../lib/supabase";
-import { ModalidadeFormData } from "../../../../types/ModalidadeTypes";
-import { ModalidadeModalProps, ModalMode } from "./ModalidadeModal.definitions";
+import React, { useState, useMemo, useEffect } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
 import * as Styles from "./ModalidadeModal.styles";
-import { FiX } from "react-icons/fi";
+import {
+  ModalMode,
+  ModalMode,
+  ModalidadeFormData,
+} from "./ModalidadeModal.definitions";
+import { Modalidade } from "../../../../types/ModalidadeTypes";
+import { supabase } from "../../../../lib/supabase"; // Import Supabase client
+
+// TODO: Implement yup schema and resolver if needed
+// import { yupResolver } from "@hookform/resolvers/yup";
+// import { modalidadeSchema } from "./ModalidadeModal.validation"; // Assuming you'll create this
+
+interface BaseModalProps {
+  open: boolean;
+  mode: ModalMode;
+  onClose: () => void;
+}
+
+interface ModalidadeModalProps extends BaseModalProps {
+  initialData?: Partial<Modalidade>; // Use Modalidade type here
+  modalidadeIdToEdit?: string;
+  onSaveComplete?: (
+    error: any | null,
+    savedData?: Modalidade, // Use Modalidade type here
+    mode?: ModalMode
+  ) => void;
+}
 
 const ModalidadeModal: React.FC<ModalidadeModalProps> = ({
   open,
@@ -13,130 +37,145 @@ const ModalidadeModal: React.FC<ModalidadeModalProps> = ({
   modalidadeIdToEdit,
   onSaveComplete,
 }) => {
-  const [formData, setFormData] = useState<ModalidadeFormData>({
-    nome: "",
-  });
+  const isViewMode = mode === ModalMode.VIEW;
+  // const isEditMode = mode === ModalMode.EDIT; // Keep if needed
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const defaultFormValues: ModalidadeFormData = useMemo(
+    () => ({
+      nome: "",
+      ativo: true,
+      ...(initialData || {}),
+    }),
+    [initialData]
+  );
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    setValue, // Added setValue
+    watch, // Added watch
+  } = useForm<ModalidadeFormData>({
+    // resolver: yupResolver(modalidadeSchema), // Uncomment if using yup
+    defaultValues: defaultFormValues,
+  });
 
   useEffect(() => {
     if (open) {
-      if (initialData) {
-        setFormData({
-          nome: initialData.nome || "",
-        });
-      } else {
-        setFormData({
-          nome: "",
-        });
-      }
+      const dataToReset =
+        mode === ModalMode.CREATE
+          ? { nome: "", ativo: true }
+          : { ...defaultFormValues, ...initialData };
+      reset(dataToReset);
     }
-  }, [open, initialData]);
+  }, [initialData, mode, reset, defaultFormValues, open]);
 
-  const handleClose = () => {
-    setFormData({
-      nome: "",
-    });
-    onClose();
-  };
+  const watchedAtivo = watch("ativo"); // Watch the 'ativo' field
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const onSubmit: SubmitHandler<ModalidadeFormData> = async (data) => {
+    if (isViewMode) return;
+    setIsSubmitting(true);
 
     try {
-      // Validação básica
-      if (!formData.nome.trim()) {
-        onSaveComplete(new Error("Nome é obrigatório"), formData, mode);
-        return;
-      }
-
+      let savedResult: Modalidade | undefined;
       if (mode === ModalMode.CREATE) {
-        const { error } = await supabase
-          .from("modalidades")
-          .insert([formData])
-          .select();
-
-        if (error) {
-          onSaveComplete(error, formData, mode);
-        } else {
-          onSaveComplete(null, formData, mode);
-          handleClose();
-        }
+        const { data: newModalidade, error } = await supabase
+          .from('modalidades')
+          .insert([data as ModalidadeFormData]) // Cast to ensure correct type
+          .select()
+          .single();
+        if (error) throw error;
+        savedResult = newModalidade as Modalidade;
       } else if (mode === ModalMode.EDIT && modalidadeIdToEdit) {
-        const { error } = await supabase
-          .from("modalidades")
-          .update(formData)
-          .eq("id", modalidadeIdToEdit)
-          .select();
-
-        if (error) {
-          onSaveComplete(error, formData, mode);
-        } else {
-          onSaveComplete(null, formData, mode);
-          handleClose();
-        }
+        const { data: updatedModalidade, error } = await supabase
+          .from('modalidades')
+          .update(data as ModalidadeFormData) // Cast to ensure correct type
+          .eq('id', modalidadeIdToEdit)
+          .select()
+          .single();
+        if (error) throw error;
+        savedResult = updatedModalidade as Modalidade;
       }
-    } catch (error) {
-      onSaveComplete(error, formData, mode);
+      onSaveComplete?.(null, savedResult, mode);
+      onClose();
+    } catch (error: any) {
+      console.error("Error saving modalidade:", error.message || error);
+      // It's good practice to cast data to Modalidade for the error callback if possible,
+      // or at least ensure it's ModalidadeFormData.
+      onSaveComplete?.(error, data as ModalidadeFormData, mode);
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getModalTitle = () => {
-    switch (mode) {
-      case ModalMode.CREATE:
-        return "Nova Modalidade";
-      case ModalMode.EDIT:
-        return "Editar Modalidade";
-      case ModalMode.VIEW:
-        return "Visualizar Modalidade";
-      default:
-        return "Modalidade";
+      setIsSubmitting(false);
     }
   };
 
   if (!open) return null;
 
   return (
-    <Styles.ModalOverlay onClick={handleClose}>
-      <Styles.ModalContainer onClick={(e) => e.stopPropagation()}>
+    <Styles.ModalOverlay>
+      <Styles.ModalContainer>
         <Styles.ModalHeader>
-          <Styles.ModalTitle>{getModalTitle()}</Styles.ModalTitle>
-          <Styles.CloseButton type="button" onClick={handleClose}>
-            <FiX />
-          </Styles.CloseButton>
+          <Styles.ModalTitle>
+            {mode === ModalMode.CREATE && "Nova Modalidade"}
+            {mode === ModalMode.VIEW && "Detalhes da Modalidade"}
+            {mode === ModalMode.EDIT && "Editar Modalidade"}
+          </Styles.ModalTitle>
+          <Styles.CloseButton onClick={onClose}>×</Styles.CloseButton>
         </Styles.ModalHeader>
 
         <Styles.ModalBody>
-          <Styles.Form onSubmit={handleSubmit}>
+          <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
-              <Styles.Label htmlFor="nome">Nome da Modalidade *</Styles.Label>
+              <Styles.Label htmlFor="nome">Nome</Styles.Label>
               <Styles.Input
                 id="nome"
-                type="text"
-                value={formData.nome}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    nome: e.target.value,
-                  }))
-                }
-                placeholder="Digite o nome da modalidade"
-                disabled={mode === ModalMode.VIEW || isLoading}
-                required
+                {...register("nome", { required: "Nome é obrigatório" })} // Basic validation
+                disabled={isViewMode}
+                autoFocus
               />
+              {errors.nome && (
+                <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              )}
             </Styles.FormGroup>
 
-            {mode !== ModalMode.VIEW && (
-              <Styles.SubmitButtonContainer>
-                <Styles.SubmitButton type="submit" disabled={isLoading}>
-                  {isLoading
-                    ? "Salvando..."
-                    : mode === ModalMode.CREATE
-                    ? "Cadastrar"
-                    : "Salvar"}
+            <Styles.FormGroup
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "10px",
+                marginBottom: "15px",
+              }}
+            >
+              <input
+                type="checkbox"
+                id="ativo"
+                {...register("ativo")}
+                disabled={isViewMode}
+                style={{ width: "auto", height: "16px", cursor: isViewMode ? 'not-allowed': 'pointer' }}
+                checked={watchedAtivo} // Ensure checkbox reflects form state
+                onChange={(e) => setValue("ativo", e.target.checked, { shouldValidate: true, shouldDirty: true })}
+              />
+              <Styles.Label
+                htmlFor="ativo"
+                style={{ marginBottom: 0, fontWeight: "normal", cursor: isViewMode ? 'not-allowed': 'pointer' }}
+              >
+                Ativo
+              </Styles.Label>
+            </Styles.FormGroup>
+            {errors.ativo && (
+              <Styles.ErrorMsg>{errors.ativo.message}</Styles.ErrorMsg>
+            )}
+
+            {!isViewMode && (
+              <Styles.SubmitButtonContainer style={{ justifyContent: 'flex-end', marginTop: '20px' }}>
+                <Styles.SubmitButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? "Salvando..." // Replace with Loader component if available
+                    : mode === ModalMode.EDIT
+                    ? "Salvar Alterações"
+                    : "Salvar Modalidade"}
                 </Styles.SubmitButton>
               </Styles.SubmitButtonContainer>
             )}
