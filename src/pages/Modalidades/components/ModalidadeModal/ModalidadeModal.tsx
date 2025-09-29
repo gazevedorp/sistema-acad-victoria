@@ -3,7 +3,6 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import * as Styles from "./ModalidadeModal.styles";
 import {
   ModalMode,
-  ModalMode,
   ModalidadeFormData,
 } from "./ModalidadeModal.definitions";
 import { Modalidade } from "../../../../types/ModalidadeTypes";
