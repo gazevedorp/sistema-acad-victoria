@@ -41,11 +41,22 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
 
   const defaultFormValues: PlanoFormData = useMemo(
     () => ({
+      modalidadeNome: "",
+      modalidadeMensal: 0,
+      modalidadeAtiva: true,
+      // Compatibility mapping
       nome: "",
-      valor_mensal: 0, // Default to 0 for number input
+      valor_mensal: 0,
       ativo: true,
-      // Map 'valor' from initialData to 'valor_mensal' for the form
-      ...(initialData ? { ...initialData, valor_mensal: initialData.valor } : {}),
+      // Map from initialData
+      ...(initialData ? {
+        modalidadeNome: initialData.modalidadeNome || initialData.nome || "",
+        modalidadeMensal: initialData.modalidadeMensal || initialData.valor || 0,
+        modalidadeAtiva: initialData.modalidadeAtiva ?? initialData.ativo ?? true,
+        nome: initialData.modalidadeNome || initialData.nome || "",
+        valor_mensal: initialData.modalidadeMensal || initialData.valor || 0,
+        ativo: initialData.modalidadeAtiva ?? initialData.ativo ?? true
+      } : {}),
     }),
     [initialData]
   );
@@ -66,56 +77,97 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
     if (open) {
       const dataToReset =
         mode === ModalMode.CREATE
-          ? { nome: "", valor_mensal: 0, ativo: true }
+          ? { 
+              modalidadeNome: "", 
+              modalidadeMensal: 0, 
+              modalidadeAtiva: true,
+              nome: "",
+              valor_mensal: 0,
+              ativo: true
+            }
           : {
               ...defaultFormValues,
-              // Ensure initialData (with 'valor') is correctly mapped to form's 'valor_mensal'
-              ...(initialData ? { ...initialData, valor_mensal: initialData.valor } : {}),
+              ...(initialData ? {
+                modalidadeNome: initialData.modalidadeNome || initialData.nome || "",
+                modalidadeMensal: initialData.modalidadeMensal || initialData.valor || 0,
+                modalidadeAtiva: initialData.modalidadeAtiva ?? initialData.ativo ?? true,
+                nome: initialData.modalidadeNome || initialData.nome || "",
+                valor_mensal: initialData.modalidadeMensal || initialData.valor || 0,
+                ativo: initialData.modalidadeAtiva ?? initialData.ativo ?? true
+              } : {}),
             };
       reset(dataToReset);
     }
   }, [initialData, mode, reset, defaultFormValues, open]);
 
-  const watchedAtivo = watch("ativo");
+  const watchedAtivo = watch("modalidadeAtiva") ?? watch("ativo");
 
   const onSubmit: SubmitHandler<PlanoFormData> = async (formData) => {
     if (isViewMode) return;
     setIsSubmitting(true);
 
-    // Map form's valor_mensal back to valor for Supabase
+    // Map form data to modalidades_old table structure
     const dataToSave = {
-      nome: formData.nome,
-      valor: formData.valor_mensal,
-      ativo: formData.ativo,
+      modalidadeNome: formData.modalidadeNome || formData.nome,
+      modalidadeMensal: formData.modalidadeMensal || formData.valor_mensal,
+      modalidadeAtiva: formData.modalidadeAtiva ?? formData.ativo,
+      modalidadeExcluida: false, // Always false for new/updated records
     };
 
     try {
       let savedResult: Plano | undefined;
       if (mode === ModalMode.CREATE) {
         const { data: newPlano, error } = await supabase
-          .from("planos")
+          .from("modalidades_old")
           .insert([dataToSave])
           .select()
           .single();
         if (error) throw error;
-        savedResult = newPlano as Plano;
+        
+        // Map result back to Plano interface
+        savedResult = {
+          ...newPlano,
+          id: newPlano.modalidadeID?.toString(),
+          nome: newPlano.modalidadeNome,
+          valor: newPlano.modalidadeMensal,
+          ativo: newPlano.modalidadeAtiva
+        } as Plano;
       } else if (mode === ModalMode.EDIT && planoIdToEdit) {
         const { data: updatedPlano, error } = await supabase
-          .from("planos")
+          .from("modalidades_old")
           .update(dataToSave)
-          .eq("id", planoIdToEdit)
+          .eq("modalidadeID", parseInt(planoIdToEdit))
           .select()
           .single();
         if (error) throw error;
-        savedResult = updatedPlano as Plano;
+        
+        // Map result back to Plano interface
+        savedResult = {
+          ...updatedPlano,
+          id: updatedPlano.modalidadeID?.toString(),
+          nome: updatedPlano.modalidadeNome,
+          valor: updatedPlano.modalidadeMensal,
+          ativo: updatedPlano.modalidadeAtiva
+        } as Plano;
       }
-      // Pass the original formData (with valor_mensal) or mapped savedResult back
+      
       onSaveComplete?.(null, savedResult, mode);
       onClose();
     } catch (error: any) {
-      console.error("Error saving plano:", error.message || error);
-      // Pass formData (which includes valor_mensal) to the callback on error
-      onSaveComplete?.(error, { ...formData, id: planoIdToEdit || "" } as Plano, mode);
+      console.error("Error saving modalidade:", error.message || error);
+      // Map formData back to Plano interface for error callback
+      const errorPlano = {
+        modalidadeID: planoIdToEdit ? parseInt(planoIdToEdit) : 0,
+        modalidadeNome: formData.modalidadeNome || formData.nome,
+        modalidadeMensal: formData.modalidadeMensal || formData.valor_mensal,
+        modalidadeAtiva: formData.modalidadeAtiva ?? formData.ativo,
+        modalidadeExcluida: false,
+        id: planoIdToEdit || "",
+        nome: formData.modalidadeNome || formData.nome,
+        valor: formData.modalidadeMensal || formData.valor_mensal,
+        ativo: formData.modalidadeAtiva ?? formData.ativo
+      } as Plano;
+      onSaveComplete?.(error, errorPlano, mode);
     } finally {
       setIsSubmitting(false);
     }
@@ -138,25 +190,25 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
         <Styles.ModalBody>
           <Styles.Form onSubmit={handleSubmit(onSubmit)}>
             <Styles.FormGroup>
-              <Styles.Label htmlFor="nome">Nome do Plano</Styles.Label>
+              <Styles.Label htmlFor="modalidadeNome">Nome da Modalidade</Styles.Label>
               <Styles.Input
-                id="nome"
-                {...register("nome", { required: "Nome é obrigatório" })}
+                id="modalidadeNome"
+                {...register("modalidadeNome", { required: "Nome é obrigatório" })}
                 disabled={isViewMode}
                 autoFocus
               />
-              {errors.nome && (
-                <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
+              {errors.modalidadeNome && (
+                <Styles.ErrorMsg>{errors.modalidadeNome.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
 
             <Styles.FormGroup style={{marginTop: '10px'}}>
-              <Styles.Label htmlFor="valor_mensal">Valor Mensal (R$)</Styles.Label>
+              <Styles.Label htmlFor="modalidadeMensal">Valor Mensal (R$)</Styles.Label>
               <Styles.Input
-                id="valor_mensal"
+                id="modalidadeMensal"
                 type="number"
                 step="0.01" // For currency
-                {...register("valor_mensal", {
+                {...register("modalidadeMensal", {
                   required: "Valor é obrigatório",
                   valueAsNumber: true,
                   min: { value: 0, message: "Valor não pode ser negativo" }
@@ -164,8 +216,8 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
                 disabled={isViewMode}
                 placeholder="Ex: 99.90"
               />
-              {errors.valor_mensal && (
-                <Styles.ErrorMsg>{errors.valor_mensal.message}</Styles.ErrorMsg>
+              {errors.modalidadeMensal && (
+                <Styles.ErrorMsg>{errors.modalidadeMensal.message}</Styles.ErrorMsg>
               )}
             </Styles.FormGroup>
 
@@ -180,22 +232,22 @@ const PlanoModal: React.FC<PlanoModalProps> = ({
             >
               <input
                 type="checkbox"
-                id="ativo"
-                {...register("ativo")}
+                id="modalidadeAtiva"
+                {...register("modalidadeAtiva")}
                 disabled={isViewMode}
                 style={{ width: "auto", height: "16px", cursor: isViewMode ? 'not-allowed': 'pointer' }}
                 checked={watchedAtivo}
-                onChange={(e) => setValue("ativo", e.target.checked, { shouldValidate: true, shouldDirty: true })}
+                onChange={(e) => setValue("modalidadeAtiva", e.target.checked, { shouldValidate: true, shouldDirty: true })}
               />
               <Styles.Label
-                htmlFor="ativo"
+                htmlFor="modalidadeAtiva"
                 style={{ marginBottom: 0, fontWeight: "normal", cursor: isViewMode ? 'not-allowed': 'pointer' }}
               >
-                Ativo
+                Ativa
               </Styles.Label>
             </Styles.FormGroup>
-            {errors.ativo && ( // Though checkbox errors are less common without complex validation
-              <Styles.ErrorMsg>{errors.ativo.message}</Styles.ErrorMsg>
+            {errors.modalidadeAtiva && ( // Though checkbox errors are less common without complex validation
+              <Styles.ErrorMsg>{errors.modalidadeAtiva.message}</Styles.ErrorMsg>
             )}
 
             {!isViewMode && (

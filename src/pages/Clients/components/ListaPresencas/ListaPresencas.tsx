@@ -4,6 +4,7 @@ import * as Styles from "../ClientModal/ClientModal.styles";
 import Loader from "../../../../components/Loader/Loader";
 import { toast } from "react-toastify";
 import { AlunoPresenca } from "../../../../types/PresencaTypes";
+import { formatDateVarchar, formatTimeVarchar } from "../../../../utils/formatter";
 
 interface ListaPresencasProps {
   alunoId: string;
@@ -46,38 +47,7 @@ const ListaPresencas: React.FC<ListaPresencasProps> = ({ alunoId, alunoName }) =
     }
   }, [alunoId, fetchPresencas]);
 
-  const formatDate = (dateString: string) => {
-    try {
-      // Se a data já está no formato DD/MM/YYYY, apenas retorna
-      if (dateString.includes('/')) {
-        return dateString;
-      }
-      // Se está no formato YYYY-MM-DD, converte para DD/MM/YYYY
-      if (dateString.includes('-')) {
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
-      }
-      return dateString;
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatTime = (timeString: string) => {
-    try {
-      // Se já tem os dois pontos, provavelmente já está formatado
-      if (timeString.includes(':')) {
-        return timeString;
-      }
-      // Se é só números (ex: 0800), formata para HH:MM
-      if (timeString.length === 4) {
-        return `${timeString.slice(0, 2)}:${timeString.slice(2, 4)}`;
-      }
-      return timeString;
-    } catch {
-      return timeString;
-    }
-  };
+  // Removidas as funções locais de formatação - agora usando as do formatter.ts centralizado
 
   if (isLoading) {
     return (
@@ -140,10 +110,10 @@ const ListaPresencas: React.FC<ListaPresencasProps> = ({ alunoId, alunoName }) =
               }}
             >
               <div style={{ fontWeight: '500' }}>
-                {formatDate(presenca.data)}
+                {formatDateVarchar(presenca.data)}
               </div>
               <div style={{ color: Styles.COLORS.primary, fontWeight: '500' }}>
-                {formatTime(presenca.hora_entrada)}
+                {formatTimeVarchar(presenca.hora_entrada)}
               </div>
               <div style={{ color: Styles.COLORS.textBody }}>
                 {presenca.descricao || '-'}

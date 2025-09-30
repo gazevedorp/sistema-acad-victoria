@@ -9,66 +9,68 @@ import {
   MatriculaFormData,
   matriculaSchema,
   MatriculaItem,
-  PlanoFromSupabase,
-  TurmaFromSupabase,
+
 } from "../ClientModal/ClientModal.definitions";
 
-async function fetchPlanosFromDB(): Promise<PlanoFromSupabase[]> {
-  const { data, error } = await supabase
-    .from("planos")
-    .select("id, nome, valor_mensal, modalidade_id");
-  if (error) {
-    console.error("MatriculaForm: Erro ao buscar planos:", error.message);
-    return [];
-  }
-  return data || [];
+// Funções para conversão de datas entre formato HTML (yyyy-mm-dd) e brasileiro (dd/mm/yyyy)
+function formatDateToBrazilian(htmlDate: string): string {
+  if (!htmlDate) return "";
+  const [year, month, day] = htmlDate.split('-');
+  return `${day}/${month}/${year}`;
 }
 
-async function fetchTurmasByIds(
-  turmaIds: string[]
-): Promise<TurmaFromSupabase[]> {
-  if (!turmaIds || turmaIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from("turmas")
-    .select("id, nome, horarios_descricao, modalidade_id")
-    .in("id", turmaIds);
-  if (error) {
-    console.error(
-      "MatriculaForm: Erro ao buscar detalhes das turmas:",
-      error.message
-    );
-    return [];
-  }
-  return data || [];
+function formatDateToHTML(brazilianDate: string): string {
+  if (!brazilianDate) return "";
+  const [day, month, year] = brazilianDate.split('/');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
-async function fetchTurmasByModalidadeId(
-  modalidadeId?: string | null
-): Promise<TurmaFromSupabase[]> {
-  if (!modalidadeId) return [];
-  const { data, error } = await supabase
-    .from("turmas")
-    .select("id, nome, horarios_descricao, modalidade_id")
-    .eq("modalidade_id", modalidadeId);
-  if (error) {
-    console.error(
-      "MatriculaForm: Erro ao buscar turmas por modalidade:",
-      error.message
-    );
-    return [];
-  }
-  return data || [];
+// Funções para conversão de valores monetários entre texto do banco e números
+function parseMoneyFromDB(dbValue: string | null | undefined): number {
+  if (!dbValue) return 0;
+  // Remove espaços e converte vírgula para ponto
+  const cleanValue = String(dbValue)
+    .trim()
+    .replace(/\s/g, '')
+    .replace(',', '.');
+  
+  const parsed = parseFloat(cleanValue);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
-async function fetchAllTurmas(): Promise<TurmaFromSupabase[]> {
+function formatMoneyToDB(value: number): string {
+  if (typeof value !== 'number' || isNaN(value)) return "0,00";
+  return value.toFixed(2).replace('.', ',');
+}
+
+function formatMoneyToDisplay(value: number): string {
+  if (typeof value !== 'number' || isNaN(value)) return "R$ 0,00";
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+}
+
+
+
+
+
+
+
+async function fetchModalidadeNome(modalidadeID: number): Promise<string> {
+  if (!modalidadeID) return "";
   const { data, error } = await supabase
-    .from("turmas")
-    .select("id, nome, horarios_descricao, modalidade_id");
+    .from("modalidades_old")
+    .select("modalidadeNome")
+    .eq("modalidadeID", modalidadeID)
+    .maybeSingle();
+  
   if (error) {
-    console.error("MatriculaForm: Erro ao buscar todas as turmas:", error.message);
-    return [];
+    console.error("MatriculaForm: Erro ao buscar modalidade:", error.message);
+    return "";
   }
-  return data || [];
+  
+  return data?.modalidadeNome || "";
 }
 
 interface MatriculaFormProps {
@@ -83,7 +85,6 @@ interface MatriculaFormProps {
 
 const MatriculaForm: React.FC<MatriculaFormProps> = ({
   alunoId,
-  alunoName,
   mode,
   onSaveComplete,
 }) => {
@@ -93,29 +94,11 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [planosDB, setPlanosDB] = useState<PlanoFromSupabase[]>([]);
-  const [turmasDisponiveisParaPlano, setTurmasDisponiveisParaPlano] = useState<
-    TurmaFromSupabase[]
-  >([]);
-  const [todasAsTurmas, setTodasAsTurmas] = useState<TurmaFromSupabase[]>([]);
-  const [turmasConhecidas, setTurmasConhecidas] = useState<
-    Map<string, TurmaFromSupabase>
-  >(new Map());
-  const [isLoadingPlanos, setIsLoadingPlanos] = useState(false);
-  const [isLoadingTurmasParaAdicionar, setIsLoadingTurmasParaAdicionar] =
-    useState(false);
 
-  const [planoParaAdicionarId, setPlanoParaAdicionarId] = useState<string>("");
-  const [turmaParaAdicionarId, setTurmaParaAdicionarId] = useState<string>("");
-  const [isPlanoPersonalizado, setIsPlanoPersonalizado] = useState<boolean>(false);
-  const [planoPersonalizadoNome, setPlanoPersonalizadoNome] = useState<string>("");
-  const [planoPersonalizadoValor, setPlanoPersonalizadoValor] = useState<number>(0);
-  const [turmasPersonalizadas, setTurmasPersonalizadas] = useState<string[]>([]);
-  const [calculatedValorCobrado, setCalculatedValorCobrado] =
-    useState<number>(0);
   const [existingMatriculaId, setExistingMatriculaId] = useState<
     string | undefined
   >(undefined);
+  const [modalidadeNome, setModalidadeNome] = useState<string>("");
 
   const getDefaultMatriculaValues = useCallback(() => {
     const hoje = new Date();
@@ -125,6 +108,8 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       diaVencimento: hoje.getDate(),
       statusMatricula: "ativa" as "ativa" | "inativa",
       observacoesMatricula: "",
+      valorPlano: "0.00",
+      valorCobrado: "0.00",
     };
   }, []);
 
@@ -133,8 +118,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
     handleSubmit,
     formState: { errors },
     watch,
-    setValue,
-    getValues,
+
     reset,
   } = useForm<MatriculaFormData>({
     //@ts-expect-error
@@ -142,15 +126,9 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
     defaultValues: getDefaultMatriculaValues(),
   });
 
-  const watchedMatriculaItens = watch("matriculaItens", []);
+  const watchedValues = watch();
 
-  const updateTurmasConhecidas = useCallback((turmas: TurmaFromSupabase[]) => {
-    setTurmasConhecidas((prevMap) => {
-      const newMap = new Map(prevMap);
-      turmas.forEach((turma) => newMap.set(turma.id, turma));
-      return newMap;
-    });
-  }, []);
+
 
   useEffect(() => {
     const loadMatriculaData = async () => {
@@ -158,53 +136,50 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
         setIsLoadingInitialData(true);
         try {
           const { data: matriculaData, error: matriculaError } = await supabase
-            .from("matriculas")
-            .select(
-              `id, data_matricula, dia_vencimento, status_matricula, observacoes, valor_cobrado_final, matricula_itens (plano_id, turma_id, valor_original_plano)`
-            )
-            .eq("aluno_id", alunoId)
-            .eq("ativo_atual", true)
+            .from("matricula_old")
+            .select("*")
+            .eq("alunoID", alunoId)
             .maybeSingle();
 
           if (matriculaError) throw matriculaError;
 
           if (matriculaData) {
-            const mappedItens = (matriculaData.matricula_itens || []).map(
-              (item: any) => ({
-                planoId: item.plano_id,
-                turmaId: item.turma_id,
-                valorOriginalPlano: item.valor_original_plano,
-              })
-            );
+            // Buscar nome da modalidade
+            if (matriculaData.modalidadeID) {
+              const nomeModalidade = await fetchModalidadeNome(matriculaData.modalidadeID);
+              setModalidadeNome(nomeModalidade);
+            }
 
+            // Debug: verificar valor recebido
+            console.log("MatriculaForm DEBUG - matriculaData.matriculaValor:", matriculaData.matriculaValor);
+            console.log("MatriculaForm DEBUG - parseMoneyFromDB resultado:", parseMoneyFromDB(matriculaData.matriculaValor || "0.00"));
+            console.log("MatriculaForm DEBUG - formatMoneyToDisplay resultado:", formatMoneyToDisplay(parseMoneyFromDB(matriculaData.matriculaValor || "0.00")));
+            
+            // Para matricula_old, os dados de planos/turmas podem estar em campos separados
+            // ou precisaremos buscar em uma tabela de detalhes separada
+            const mappedItens: MatriculaItem[] = [];
+            
+            // TODO: Implementar busca dos itens de matrícula baseado na estrutura real da matricula_old
+            // Por enquanto, deixamos vazio para não quebrar
+            
             const formData: MatriculaFormData = {
               dataMatricula:
-                matriculaData.data_matricula ||
+                formatDateToHTML(matriculaData.matriculaDtInicio) ||
                 getDefaultMatriculaValues().dataMatricula,
               diaVencimento:
-                matriculaData.dia_vencimento ??
+                matriculaData.matriculaDiaVencimento ??
                 getDefaultMatriculaValues().diaVencimento,
               statusMatricula:
-                (matriculaData.status_matricula as MatriculaFormData["statusMatricula"]) ||
-                "ativa",
-              observacoesMatricula: matriculaData.observacoes || "",
+                matriculaData.matriculaSituacao === "ATIVA" ? "ativa" : "inativa",
+              observacoesMatricula: "", // Não há campo de observações na estrutura atual
               matriculaItens: mappedItens,
+              valorPlano: matriculaData.matriculaValor || "0.00", // O valor do plano vem do matriculaValor
+              valorCobrado: matriculaData.matriculaValor || "0.00", // O valor cobrado também vem do matriculaValor
             };
             reset(formData);
-            setExistingMatriculaId(matriculaData.id);
-            setCalculatedValorCobrado(matriculaData.valor_cobrado_final || 0);
+            setExistingMatriculaId(matriculaData.matriculaID);
 
-            if (mappedItens.length > 0) {
-              const turmaIds = [
-                ...new Set(
-                  mappedItens.map((item) => item.turmaId).filter(Boolean)
-                ),
-              ];
-              if (turmaIds.length > 0) {
-                const turmasData = await fetchTurmasByIds(turmaIds);
-                updateTurmasConhecidas(turmasData);
-              }
-            }
+
           } else {
             reset(getDefaultMatriculaValues());
             setExistingMatriculaId(undefined);
@@ -219,133 +194,14 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       } else {
         reset(getDefaultMatriculaValues());
         setExistingMatriculaId(undefined);
-        setCalculatedValorCobrado(0);
-        setTurmasConhecidas(new Map());
+
         setIsLoadingInitialData(false);
       }
     };
     loadMatriculaData();
-  }, [alunoId, mode, reset, getDefaultMatriculaValues, updateTurmasConhecidas]);
+  }, [alunoId, mode, reset, getDefaultMatriculaValues]);
 
-  useEffect(() => {
-    if (!isViewMode) {
-      setIsLoadingPlanos(true);
-      Promise.all([
-        fetchPlanosFromDB(),
-        fetchAllTurmas()
-      ]).then(([planos, turmas]) => {
-        setPlanosDB(planos);
-        setTodasAsTurmas(turmas);
-        updateTurmasConhecidas(turmas);
-      }).finally(() => setIsLoadingPlanos(false));
-    }
-  }, [isViewMode, updateTurmasConhecidas]);
 
-  useEffect(() => {
-    if (planoParaAdicionarId && planosDB.length > 0) {
-      const planoSelecionado = planosDB.find(
-        (p) => p.id === planoParaAdicionarId
-      );
-      if (planoSelecionado && planoSelecionado.modalidade_id) {
-        setIsLoadingTurmasParaAdicionar(true);
-        fetchTurmasByModalidadeId(planoSelecionado.modalidade_id)
-          .then((turmas) => {
-            setTurmasDisponiveisParaPlano(turmas);
-            updateTurmasConhecidas(turmas);
-          })
-          .finally(() => setIsLoadingTurmasParaAdicionar(false));
-      } else {
-        setTurmasDisponiveisParaPlano([]);
-      }
-    } else {
-      setTurmasDisponiveisParaPlano([]);
-    }
-  }, [planoParaAdicionarId, planosDB, updateTurmasConhecidas]);
-
-  useEffect(() => {
-    if (!watchedMatriculaItens || watchedMatriculaItens.length === 0) {
-      setCalculatedValorCobrado(0);
-      return;
-    }
-    
-    // Como agora só temos um plano, não há desconto por múltiplos planos
-    const valorTotalMensal = watchedMatriculaItens.reduce(
-      (sum, item) => sum + item.valorOriginalPlano,
-      0
-    );
-    
-    setCalculatedValorCobrado(valorTotalMensal);
-  }, [watchedMatriculaItens]);
-
-  const handleAddMatriculaItem = useCallback(() => {
-    // Remover item existente se houver (só pode ter um plano)
-    setValue("matriculaItens", [], { shouldValidate: true, shouldDirty: true });
-    
-    if (isPlanoPersonalizado) {
-      // Plano personalizado
-      if (planoPersonalizadoNome && planoPersonalizadoValor > 0 && turmasPersonalizadas.length > 0) {
-        const itensPersonalizados = turmasPersonalizadas.map(turmaId => ({
-          planoId: "personalizado",
-          turmaId: turmaId,
-          valorOriginalPlano: planoPersonalizadoValor,
-          nomePersonalizado: planoPersonalizadoNome,
-        }));
-        
-        setValue("matriculaItens", itensPersonalizados, {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-        
-        // Limpar campos
-        setPlanoPersonalizadoNome("");
-        setPlanoPersonalizadoValor(0);
-        setTurmasPersonalizadas([]);
-      }
-    } else {
-      // Plano do banco de dados
-      if (planoParaAdicionarId && turmaParaAdicionarId) {
-        const planoSelecionado = planosDB.find(
-          (p) => p.id === planoParaAdicionarId
-        );
-        if (!planoSelecionado) return;
-        
-        const novoItem: MatriculaItem = {
-          planoId: planoSelecionado.id,
-          turmaId: turmaParaAdicionarId,
-          valorOriginalPlano: planoSelecionado.valor_mensal,
-        };
-        
-        setValue("matriculaItens", [novoItem], {
-          shouldValidate: true,
-          shouldDirty: true,
-        });
-        
-        setPlanoParaAdicionarId("");
-        setTurmaParaAdicionarId("");
-      }
-    }
-  }, [
-    isPlanoPersonalizado,
-    planoPersonalizadoNome,
-    planoPersonalizadoValor,
-    turmasPersonalizadas,
-    planoParaAdicionarId,
-    turmaParaAdicionarId,
-    planosDB,
-    setValue,
-  ]);
-
-  const handleRemoveMatriculaItem = useCallback(
-    (indexToRemove: number) => {
-      const atuaisItens = getValues("matriculaItens") || [];
-      setValue(
-        "matriculaItens",
-        atuaisItens.filter((_, index) => index !== indexToRemove),
-        { shouldValidate: true, shouldDirty: true }
-      );
-    },
-    [getValues, setValue]
-  );
 
   const onSubmit: SubmitHandler<MatriculaFormData> = async (formData) => {
     if (isViewMode) return;
@@ -354,10 +210,10 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
     const { matriculaItens, ...matriculaInfoGeral } = formData;
 
     // Como agora só temos um plano, não há desconto
-    const valorTotalBruto = matriculaItens.reduce(
-      (sum, item) => sum + item.valorOriginalPlano,
-      0
-    );
+    // const valorTotalBruto = matriculaItens.reduce(
+    //   (sum, item) => sum + item.valorOriginalPlano,
+    //   0
+    // );
 
     const dataMatriculaObj = new Date(
       matriculaInfoGeral.dataMatricula + "T00:00:00Z"
@@ -369,42 +225,47 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       .split("T")[0];
 
     const matriculaPrincipalPayload = {
-      id_aluno: alunoId,
-      data_matricula: matriculaInfoGeral.dataMatricula,
-      data_vencimento: dataVencimentoFormatada,
-      valor_total: valorTotalBruto,
-      porcentagem_desconto: 0, // Sem desconto para um único plano
-      valor_final_cobrado: calculatedValorCobrado,
-      status_matricula: matriculaInfoGeral.statusMatricula,
-      observacao: matriculaInfoGeral.observacoesMatricula,
-      ativo_atual: true,
+      alunoID: parseInt(alunoId),
+      modalidadeID: 1, // Valor padrão, pode ser ajustado conforme necessário
+      matriculaDtInicio: formatDateToBrazilian(matriculaInfoGeral.dataMatricula),
+      matriculaDtFim: formatDateToBrazilian(dataVencimentoFormatada), // Usando como data fim temporária
+      matriculaDesconto: formatMoneyToDB(0),
+      matriculaValor: formatMoneyToDB(parseMoneyFromDB(formData.valorCobrado || "0.00")),
+      matriculaForma: "MENSAL",
+      matriculaSituacao: matriculaInfoGeral.statusMatricula === "ativa" ? "ATIVA" : "INATIVA",
+      matriculaDiaVencimento: matriculaInfoGeral.diaVencimento,
+      matriculaDtBloqueio: null,
+      matriculaDtTrancamento: null,
+      matriculaDtEncerramento: null,
+      matriculaMotivoBloqueio: null,
+      matriculaMotivoEncerramento: null,
+      matriculaMotivoTrancamento: null,
+      matriculaExcluida: false,
+      matriculaDtInicioGeral: formatDateToBrazilian(matriculaInfoGeral.dataMatricula),
     };
 
     try {
       let currentMatriculaId = existingMatriculaId;
 
       if (mode === ModalMode.CREATE || !existingMatriculaId) {
-        await supabase
-          .from("matriculas")
-          .update({ ativo_atual: false })
-          .eq("id_aluno", alunoId)
-          .eq("ativo_atual", true);
-
+        // Para matricula_old, não há conceito de ativo_atual, apenas inserimos nova matrícula
         const { data: newMatricula, error: matriculaError } = await supabase
-          .from("matriculas")
+          .from("matricula_old")
           .insert(matriculaPrincipalPayload)
-          .select("id")
+          .select("matriculaID")
           .single();
 
         if (matriculaError) throw matriculaError;
-        if (!newMatricula || !newMatricula.id)
+        if (!newMatricula || !newMatricula.matriculaID)
           throw new Error("Falha ao obter ID da nova matrícula.");
-        currentMatriculaId = newMatricula.id;
+        currentMatriculaId = newMatricula.matriculaID;
       } else {
+        // Para update, removemos o alunoID do payload
+        const { alunoID, ...updatePayload } = matriculaPrincipalPayload;
         const { error: updateError } = await supabase
-          .from("matriculas")
-          .update(matriculaPrincipalPayload)
-          .eq("id", existingMatriculaId);
+          .from("matricula_old")
+          .update(updatePayload)
+          .eq("matriculaID", existingMatriculaId);
         if (updateError) throw updateError;
       }
 
@@ -412,11 +273,14 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
         throw new Error("ID da matrícula não foi estabelecido ou encontrado.");
       }
 
-      await supabase
-        .from("matricula_detalhes")
-        .delete()
-        .eq("id_matricula", currentMatriculaId);
+      // TODO: Implementar limpeza dos detalhes de matrícula para matricula_old
+      // await supabase
+      //   .from("matricula_detalhes_old")
+      //   .delete()
+      //   .eq("matriculaID", currentMatriculaId);
 
+      // TODO: Implementar quando definir estrutura de itens para matricula_old
+      /*
       const itensParaSalvar = matriculaItens.map((item) => {
         if (item.planoId === "personalizado") {
           // Para plano personalizado, usamos NULL para o id_plano
@@ -447,13 +311,15 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
           };
         }
       });
+      */
 
-      if (itensParaSalvar.length > 0) {
-        const { error: itensError } = await supabase
-          .from("matricula_detalhes")
-          .insert(itensParaSalvar);
-        if (itensError) throw itensError;
-      }
+      // TODO: Implementar inserção dos itens de matrícula para matricula_old
+      // if (itensParaSalvar.length > 0) {
+      //   const { error: itensError } = await supabase
+      //     .from("matricula_detalhes_old")
+      //     .insert(itensParaSalvar);
+      //   if (itensError) throw itensError;
+      // }
 
       onSaveComplete(null, {
         ...formData,
@@ -477,238 +343,54 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
   return (
     //@ts-expect-error
     <Styles.Form onSubmit={handleSubmit(onSubmit)}>
+
+      {/* Informações do Plano (Somente Leitura) */}
       <Styles.SectionTitle
-        style={{ marginTop: 0, fontSize: "1rem", color: Styles.COLORS.primary }}
+        style={{ marginTop: "10px", fontSize: "0.95rem" }}
       >
-        {mode === ModalMode.CREATE
-          ? "Nova Matrícula para Aluno: "
-          : isEditMode
-          ? "Editando Matrícula do Aluno: "
-          : "Visualizando Matrícula Aluno: "}{" "}
-        {alunoName}
+        Informações do Plano
       </Styles.SectionTitle>
+      
+      <Styles.FormRow>
+        <Styles.FormGroup>
+          <Styles.Label>Plano/Modalidade</Styles.Label>
+          <Styles.DisplayField>
+            {modalidadeNome || "Carregando..."}
+          </Styles.DisplayField>
+        </Styles.FormGroup>
+      </Styles.FormRow>
+      
+      {/* Campos ocultos para armazenar os valores originais */}
+      <input type="hidden" {...register("valorPlano")} />
+      <input type="hidden" {...register("valorCobrado")} />
 
-      {!isViewMode && (
-        <>
-          <Styles.SectionTitle
-            style={{ marginTop: "10px", fontSize: "0.95rem" }}
-          >
-            Configurar Plano (Apenas 1 plano permitido)
-          </Styles.SectionTitle>
-          
-          <Styles.FormGroup>
-            <Styles.Label>Tipo de Plano</Styles.Label>
-            <Styles.Select
-              value={isPlanoPersonalizado ? "personalizado" : "banco"}
-              onChange={(e) => {
-                const isPersonalizado = e.target.value === "personalizado";
-                setIsPlanoPersonalizado(isPersonalizado);
-                // Limpar seleções anteriores
-                setPlanoParaAdicionarId("");
-                setTurmaParaAdicionarId("");
-                setPlanoPersonalizadoNome("");
-                setPlanoPersonalizadoValor(0);
-                setTurmasPersonalizadas([]);
-                // Limpar matrícula atual
-                setValue("matriculaItens", []);
-              }}
-            >
-              <option value="banco">Plano do Sistema</option>
-              <option value="personalizado">Plano Personalizado</option>
-            </Styles.Select>
-          </Styles.FormGroup>
 
-          {isPlanoPersonalizado ? (
-            <>
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label>Nome do Plano Personalizado</Styles.Label>
-                  <Styles.Input
-                    type="text"
-                    value={planoPersonalizadoNome}
-                    onChange={(e) => setPlanoPersonalizadoNome(e.target.value)}
-                    placeholder="Ex: Plano Especial"
-                  />
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label>Valor Mensal (R$)</Styles.Label>
-                  <Styles.Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={planoPersonalizadoValor}
-                    onChange={(e) => setPlanoPersonalizadoValor(Number(e.target.value))}
-                    placeholder="0.00"
-                  />
-                </Styles.FormGroup>
-              </Styles.FormRow>
-              
-              <Styles.FormGroup>
-                <Styles.Label>Selecionar Turmas</Styles.Label>
-                <div style={{ maxHeight: "150px", overflowY: "auto", border: "1px solid #ccc", padding: "10px", borderRadius: "4px" }}>
-                  {todasAsTurmas.map((turma) => (
-                    <div key={turma.id} style={{ marginBottom: "5px" }}>
-                      <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={turmasPersonalizadas.includes(turma.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setTurmasPersonalizadas(prev => [...prev, turma.id]);
-                            } else {
-                              setTurmasPersonalizadas(prev => prev.filter(id => id !== turma.id));
-                            }
-                          }}
-                          style={{ marginRight: "8px" }}
-                        />
-                        <span>
-                          {turma.nome} {turma.horarios_descricao ? `(${turma.horarios_descricao})` : ""}
-                        </span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </Styles.FormGroup>
-            </>
-          ) : (
-            <>
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label>Plano disponível</Styles.Label>
-                  <Styles.Select
-                    value={planoParaAdicionarId}
-                    onChange={(e) => {
-                      setPlanoParaAdicionarId(e.target.value);
-                      setTurmaParaAdicionarId("");
-                    }}
-                    disabled={isLoadingPlanos}
-                  >
-                    <option value="">
-                      {isLoadingPlanos ? "Carregando..." : "Selecione um Plano"}
-                    </option>
-                    {planosDB.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome} -{" "}
-                        {Number(p.valor_mensal).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
-                      </option>
-                    ))}
-                  </Styles.Select>
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label>Turma para este Plano</Styles.Label>
-                  <Styles.Select
-                    value={turmaParaAdicionarId}
-                    onChange={(e) => setTurmaParaAdicionarId(e.target.value)}
-                    disabled={isLoadingTurmasParaAdicionar || !planoParaAdicionarId}
-                  >
-                    <option value="">
-                      {isLoadingTurmasParaAdicionar
-                        ? "Carregando..."
-                        : planoParaAdicionarId
-                        ? "Selecione uma Turma"
-                        : "Escolha um plano"}
-                    </option>
-                    {turmasDisponiveisParaPlano.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome}{" "}
-                        {t.horarios_descricao ? `(${t.horarios_descricao})` : ""}
-                      </option>
-                    ))}
-                  </Styles.Select>
-                </Styles.FormGroup>
-              </Styles.FormRow>
-            </>
-          )}
-          
-          <Styles.ActionButtonSmall
-            type="button"
-            onClick={handleAddMatriculaItem}
-            disabled={
-              isPlanoPersonalizado 
-                ? (!planoPersonalizadoNome || planoPersonalizadoValor <= 0 || turmasPersonalizadas.length === 0)
-                : (!planoParaAdicionarId || !turmaParaAdicionarId)
-            }
-            style={{ alignSelf: "flex-start", marginBottom: "15px" }}
-          >
-            {watchedMatriculaItens.length > 0 ? "Substituir Plano" : "Definir Plano"}
-          </Styles.ActionButtonSmall>
-        </>
-      )}
 
-      {(watchedMatriculaItens || []).length > 0 ? (
-        <>
-          <Styles.SectionTitle style={{ fontSize: "0.95rem" }}>
-            Plano Configurado
-          </Styles.SectionTitle>
-          <Styles.MatriculaItemsList>
-            {watchedMatriculaItens.map((item, index) => {
-              const planoDetalhe = planosDB.find((p) => p.id === item.planoId);
-              const turmaDetalhe = turmasConhecidas.get(item.turmaId);
-              const isPersonalizado = item.planoId === "personalizado";
-              
-              return (
-                <Styles.MatriculaItemCard
-                  key={`${item.planoId}-${item.turmaId}-${index}`}
-                >
-                  <div>
-                    <strong>Plano:</strong>{" "}
-                    {isPersonalizado 
-                      ? (item.nomePersonalizado || "Plano Personalizado")
-                      : (planoDetalhe?.nome || `ID ${item.planoId}`)
-                    }
-                    <br />
-                    <strong>Turma:</strong>{" "}
-                    {turmaDetalhe?.nome || `ID Turma: ${item.turmaId}`}{" "}
-                    {turmaDetalhe?.horarios_descricao
-                      ? `(${turmaDetalhe.horarios_descricao})`
-                      : ""}
-                    <br />
-                    <strong>Valor:</strong>{" "}
-                    {Number(item.valorOriginalPlano).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </div>
-                  {!isViewMode && (
-                    <Styles.RemoveItemButton
-                      type="button"
-                      onClick={() => handleRemoveMatriculaItem(index)}
-                    >
-                      X
-                    </Styles.RemoveItemButton>
-                  )}
-                </Styles.MatriculaItemCard>
-              );
-            })}
-          </Styles.MatriculaItemsList>
-        </>
-      ) : (
-        isViewMode && <p>Nenhum plano configurado para esta matrícula.</p>
-      )}
 
-      {errors.matriculaItens && (
-        <Styles.ErrorMsg>
-          {typeof errors.matriculaItens === "object" &&
-          !Array.isArray(errors.matriculaItens) &&
-          errors.matriculaItens.message
-            ? errors.matriculaItens.message
-            : "Configure um plano para a matrícula."}
-        </Styles.ErrorMsg>
-      )}
+
+
 
       <Styles.FormRow style={{ marginTop: "15px", alignItems: "flex-end" }}>
         <Styles.FormGroup style={{ marginBottom: 0 }}>
+          <Styles.Label>Valor do Plano</Styles.Label>
+          <Styles.DisplayField>
+            {(() => {
+              const valor = watchedValues.valorPlano || "0.00";
+              console.log("MatriculaForm DEBUG - watchedValues.valorPlano:", valor);
+              return formatMoneyToDisplay(parseMoneyFromDB(valor));
+            })()}
+          </Styles.DisplayField>
+        </Styles.FormGroup>
+        <Styles.FormGroup style={{ marginBottom: 0 }}>
           <Styles.Label style={{ fontWeight: "bold" }}>
-            Valor Mensal
+            Valor Mensal (Cobrança)
           </Styles.Label>
           <Styles.DisplayField style={{ fontWeight: "bold", fontSize: "1rem" }}>
-            {calculatedValorCobrado.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
+            {(() => {
+              const valor = watchedValues.valorCobrado || "0.00";
+              console.log("MatriculaForm DEBUG - watchedValues.valorCobrado:", valor);
+              return formatMoneyToDisplay(parseMoneyFromDB(valor));
+            })()}
           </Styles.DisplayField>
         </Styles.FormGroup>
       </Styles.FormRow>

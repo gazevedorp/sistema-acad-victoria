@@ -96,6 +96,60 @@ export const FormGroup = styled.div`
   flex-grow: 1; 
 `;
 
+export const StudentNameHeader = styled.div`
+  padding: 16px 24px 12px 24px;
+  border-bottom: 1px solid ${COLORS.borderDefault};
+  background-color: ${COLORS.backgroundLight};
+  
+  h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: ${COLORS.textBody};
+  }
+`;
+
+export const ModalTabsContainer = styled.div`
+  display: flex;
+  border-bottom: 1px solid ${COLORS.borderDefault};
+  background-color: ${COLORS.white};
+  margin: 0 24px;
+`;
+
+export const ModalTab = styled.button<{ active: boolean }>`
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: ${props => props.active ? COLORS.primary : COLORS.textMuted};
+  border-bottom: 2px solid ${props => props.active ? COLORS.primary : 'transparent'};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    color: ${COLORS.primary};
+    background-color: ${COLORS.backgroundLight};
+  }
+`;
+
+export const ModalTabContent = styled.div`
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex-grow: 1;
+  
+  &::-webkit-scrollbar { 
+    width: 6px; 
+  }
+  &::-webkit-scrollbar-thumb { 
+    background-color: #ced4da; 
+    border-radius: 3px; 
+  }
+  &::-webkit-scrollbar-track { 
+    background-color: ${COLORS.backgroundLight}; 
+  }
+`;
+
 export const FormRow = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -177,6 +231,24 @@ export const SubmitButton = styled.button`
 export const ErrorMsg = styled.span`
   color: ${COLORS.danger};
   font-size: 0.75rem;
+`;
+
+export const CheckboxContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const Checkbox = styled.input`
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+`;
+
+export const CheckboxLabel = styled.label`
+  font-size: 0.9rem;
+  color: ${COLORS.textLabel};
+  cursor: pointer;
 `;
 
 // Tab System Styles

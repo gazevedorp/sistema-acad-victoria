@@ -1,6 +1,6 @@
-// src/pages/Home/components/TransactionHistoryModal/TransactionHistoryModal.styles.ts
+
 import styled from 'styled-components';
-import { COLORS } from '../../../../styles/colors'; // Adjust path as needed
+import { COLORS } from '../../../../styles/colors';
 
 export const ModalBackdrop = styled.div`
   position: fixed;
@@ -12,7 +12,7 @@ export const ModalBackdrop = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000; // Ensure it's above other content
+  z-index: 1000;
 `;
 
 export const ModalContent = styled.div`
@@ -20,12 +20,12 @@ export const ModalContent = styled.div`
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  width: 80%; // Or a fixed width like 600px
+  width: 80%;
   max-width: 800px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  overflow-y: auto; // If content might overflow
+  overflow-y: auto;
 `;
 
 export const ModalHeader = styled.div`
@@ -44,17 +44,16 @@ export const ModalHeader = styled.div`
 `;
 
 export const ModalBody = styled.div`
-  // Styles for the body content area
-  // May not need specific styles if content dictates its own layout
-  flex-grow: 1; // Allow body to grow and fill space, enabling overflow scroll for table
-  display: flex; // Added to allow LoaderDiv to center if body itself is flex
-  flex-direction: column; // Ensure items in body stack vertically
+
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 `;
 
 export const ControlsContainer = styled.div`
   display: flex;
   margin-bottom: 15px;
-  gap: 10px; // For spacing between input and select
+  gap: 10px;
   align-items: center;
 `;
 
@@ -63,8 +62,8 @@ export const Input = styled.input`
   font-size: 0.875rem;
   border: 1px solid ${COLORS.borderDefault};
   border-radius: 4px;
-  /* margin-right: 10px; // Replaced by gap in ControlsContainer */
-  flex-grow: 1; // Allow search input to take more space
+
+  flex-grow: 1;
 `;
 
 export const Select = styled.select`
@@ -72,14 +71,14 @@ export const Select = styled.select`
   font-size: 0.875rem;
   border: 1px solid ${COLORS.borderDefault};
   border-radius: 4px;
-  background-color: ${COLORS.white}; // Ensure select background is white
+  background-color: ${COLORS.white};
 `;
 
 export const LoaderDiv = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-grow: 1; // Allow loader to take available space in ModalBody
+  flex-grow: 1;
 `;
 
 export const CloseButton = styled.button`

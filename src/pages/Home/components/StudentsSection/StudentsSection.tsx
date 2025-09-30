@@ -1,149 +1,82 @@
 import React, { useEffect, useState, useCallback } from "react";
-import * as Styles from "./StudentsSection.styles"; // Styles for this section
-import { supabase } from "../../../../lib/supabase";
-import { Client } from "../../../../types/ClientTypes";
-import Loader from "../../../../components/Loader/Loader";
-import { toast } from "react-toastify"; // Assuming ToastContainer is global or in parent
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import * as Styles from "./StudentsSection.styles";
+import { AlunoOld } from "../../services/homeServices";
+import Loader from "../../../../components/Loader/Loader";
 import { ModalMode as StudentModalMode, DadosCadastraisFormData as StudentFormData } from "../../../Clients/components/ClientModal/ClientModal.definitions";
 import DefaultTable, { TableColumn } from "../../../../components/Table/DefaultTable";
 import ClientModal from "../../../Clients/components/ClientModal/ClientModal";
+import { useStudents } from "../../hooks/useStudents";
 
-// --- CONSTANTS ---
-// No additional constants needed for this component
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-// --- PROPS DEFINITION ---
-// For now, StudentsSection is self-contained for data fetching.
-// Props might be added later if Home needs to influence it or receive data from it.
-interface StudentsSectionProps {
-  // Example: onStudentsLoaded?: (students: Client[]) => void;
-}
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
 
-const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
-  // --- STUDENT MODAL HANDLERS ---
-  const openEditStudentModal = useCallback((client: Client) => {
-    setSelectedClientState(client);
-    setClientModalMode(StudentModalMode.EDIT);
-    setIsClientModalOpen(true);
-  }, []); // Empty dependency array if it doesn't depend on other component states/props that change
+  return debouncedValue;
+};
 
-  // Handler for row clicks - opens the modal with student data populated
-  const handleStudentRowClick = useCallback((client: Client) => {
-    openEditStudentModal(client);
-  }, [openEditStudentModal]);
+interface StudentsSectionProps {}
 
-  // --- TABLE COLUMN DEFINITION MOVED INSIDE COMPONENT ---
-  const studentTableColumns: TableColumn<Client>[] = [
-    { field: "nome", header: "Nome" },
-    { field: "telefone", header: "Telefone", formatter: "phone" },
-    { field: "data_nascimento", header: "Nascimento", formatter: "date" },
-    { field: "ativo", header: "Status", formatter: "status" },
-  ];
+const StudentsSection: React.FC<StudentsSectionProps> = () => {
+  const {
+    students,
+    totalStudents,
+    studentRowsPerPage,
+    studentCurrentPage,
+    isStudentsLoading,
+    studentSearchInput,
+    activeFilter,
+    loadStudents,
+    handleStudentPageChange,
+    handleStudentRowsPerPageChange,
+    handleSearchInputChange,
+    handleFilterChange,
+  } = useStudents();
 
-  // Student Management States
-  const [students, setStudents] = useState<Client[]>([]);
-  const [studentRowsPerPage, setStudentRowsPerPage] = useState<number>(10);
-  const [studentCurrentPage, setStudentCurrentPage] = useState<number>(1);
   const [isClientModalOpen, setIsClientModalOpen] = useState<boolean>(false);
   const [clientModalMode, setClientModalMode] = useState<StudentModalMode>(StudentModalMode.CREATE);
-  const [selectedClientState, setSelectedClientState] = useState<Client | null>(null);
-  const [isStudentsLoading, setIsStudentsLoading] = useState<boolean>(false);
-  const [studentSearchInput, setStudentSearchInput] = useState<string>("");
-  const [totalStudents, setTotalStudents] = useState<number>(0);
-
-  // Debounce hook
-  const useDebounce = (value: string, delay: number) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-      const handler = setTimeout(() => {
-        setDebouncedValue(value);
-      }, delay);
-
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [value, delay]);
-
-    return debouncedValue;
-  };
-
+  const [selectedClientState, setSelectedClientState] = useState<AlunoOld | null>(null);
   const debouncedSearchTerm = useDebounce(studentSearchInput, 500);
 
-  const fetchStudents = useCallback(async (searchQuery: string = "", page: number = 1, pageSize: number = 10) => {
-    setIsStudentsLoading(true);
-    try {
-      let query = supabase
-        .from("alunos")
-        .select("*", { count: 'exact' })
-        .order("nome", { ascending: true });
 
-      // Aplicar filtro de busca se fornecido
-      if (searchQuery.trim()) {
-        query = query.ilike('nome', `%${searchQuery}%`);
-      }
+  const studentTableColumns: TableColumn<AlunoOld>[] = [
+    { field: "alunoNome", header: "Nome" },
+    { field: "alunoCelular", header: "Celular", formatter: "phone" },
+    { field: "alunoDataNascimento", header: "Nascimento", formatter: "dateVarchar" },
+    { 
+      field: "alunoSexo", 
+      header: "Sexo", 
+      render: (aluno: AlunoOld) => aluno.alunoSexo === 1 ? "F" : "M" 
+    },
+  ];
 
-      // Aplicar paginação
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      query = query.range(from, to);
+  const openEditStudentModal = useCallback((aluno: AlunoOld) => {
+    setSelectedClientState(aluno);
+    setClientModalMode(StudentModalMode.EDIT);
+    setIsClientModalOpen(true);
+  }, []);
 
-      const { data, error, count } = await query;
+  const handleStudentRowClick = useCallback((aluno: AlunoOld) => {
+    openEditStudentModal(aluno);
+  }, [openEditStudentModal]);
 
-      if (error) {
-        toast.error("Erro ao buscar alunos.");
-        console.error("Error fetching students:", error);
-        setStudents([]);
-        setTotalStudents(0);
-        return;
-      }
-      if (data) {
-        setStudents(data as Client[]);
-        setTotalStudents(count || 0);
-        // If a prop callback exists to notify parent about loaded students:
-        // props.onStudentsLoaded?.(data as Client[]);
-      }
-    } catch (err) {
-      toast.error("Erro inesperado ao buscar alunos.");
-      console.error("Unexpected error fetching students:", err);
-      setStudents([]);
-      setTotalStudents(0);
-    } finally {
-      setIsStudentsLoading(false);
-    }
-  }, []); // Add dependencies like props.onStudentsLoaded if it's used
-
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
-
-  // Efeito para buscar quando o termo de busca mudar (com debounce)
-  useEffect(() => {
-    fetchStudents(debouncedSearchTerm, studentCurrentPage, studentRowsPerPage);
-  }, [debouncedSearchTerm, studentCurrentPage, studentRowsPerPage, fetchStudents]);
-
-  const openCreateStudentModal = () => {
+  const openCreateStudentModal = useCallback(() => {
     setSelectedClientState(null);
     setClientModalMode(StudentModalMode.CREATE);
     setIsClientModalOpen(true);
-  };
+  }, []);
 
-  // const openViewStudentModal = (client: Client) => { // REMOVED - Not used
-  //   setSelectedClientState(client);
-  //   setClientModalMode(StudentModalMode.VIEW);
-  //   setIsClientModalOpen(true);
-  // };
-
-  // const openEditStudentModal = (client: Client) => { // REMOVED - Duplicate
-  //   setSelectedClientState(client);
-  //   setClientModalMode(StudentModalMode.EDIT);
-  //   setIsClientModalOpen(true);
-  // };
-
-  const handleCloseStudentModal = () => {
+  const handleCloseStudentModal = useCallback(() => {
     setIsClientModalOpen(false);
     setSelectedClientState(null);
-  };
+  }, []);
 
   const handleStudentSaveComplete = useCallback(
     (error: any | null, _s?: Partial<StudentFormData>, mode?: StudentModalMode) => {
@@ -151,70 +84,112 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
         toast.error(`Erro: ${(error as Error).message || "Erro desconhecido ao salvar aluno."}`);
       } else {
         toast.success(`Aluno ${mode === StudentModalMode.CREATE ? "cadastrado" : "atualizado"} com sucesso!`);
-        fetchStudents(debouncedSearchTerm, studentCurrentPage, studentRowsPerPage); // Refresh student list
+        loadStudents(debouncedSearchTerm, studentCurrentPage, studentRowsPerPage, activeFilter);
         handleCloseStudentModal();
       }
     },
-    [fetchStudents, debouncedSearchTerm, studentCurrentPage, studentRowsPerPage] // fetchStudents is a dependency
+    [loadStudents, debouncedSearchTerm, studentCurrentPage, studentRowsPerPage, handleCloseStudentModal]
   );
 
   const getInitialStudentModalData = (): Partial<StudentFormData> | undefined => {
     if ((clientModalMode === StudentModalMode.EDIT || clientModalMode === StudentModalMode.VIEW) && selectedClientState) {
-      return selectedClientState;
+
+      return {
+        nome: selectedClientState.alunoNome,
+        cpf: selectedClientState.alunoCPF || "",
+        rg: selectedClientState.alunoIdentidade || undefined,
+        data_nascimento: selectedClientState.alunoDataNascimento,
+        sexo: selectedClientState.alunoSexo === 1 ? "F" : "M",
+        telefone: selectedClientState.alunoCelular || "",
+        email: selectedClientState.alunoEmail || undefined,
+        cep: selectedClientState.alunoCEP || "",
+        rua: selectedClientState.alunoEndereco || "",
+        bairro: selectedClientState.alunoBairro || "",
+        cidade: selectedClientState.alunoCidade || "",
+        estado: selectedClientState.alunoEstado || "",
+        possuiResponsavel: !!selectedClientState.alunoResponsavel,
+        responsavelNome: selectedClientState.alunoResponsavel || undefined,
+        responsavelCpf: selectedClientState.alunoResponsavelCPF || undefined,
+        responsavelTelefone: selectedClientState.alunoTelefoneResponsavel || undefined,
+      };
     }
     return undefined;
   };
 
-  const handleStudentPageChange = (page: number) => {
-    setStudentCurrentPage(page);
-  };
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
-  const handleStudentRowsPerPageChange = (rows: number) => {
-    setStudentRowsPerPage(rows);
-    setStudentCurrentPage(1);
-  };
+  useEffect(() => {
+    loadStudents(debouncedSearchTerm, studentCurrentPage, studentRowsPerPage, activeFilter);
+  }, [debouncedSearchTerm, studentCurrentPage, studentRowsPerPage, activeFilter, loadStudents]);
 
-    // --- KEYBOARD SHORTCUTS ---
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // F4: Cadastrar Novo Aluno
       if (event.key === "F4") {
         event.preventDefault();
         openCreateStudentModal();
-      }
-      // Escape: Fechar Modal de Aluno
-      else if (event.key === "Escape") {
-        if (isClientModalOpen) {
-          event.preventDefault();
-          handleCloseStudentModal();
-        }
+      } else if (event.key === "Escape" && isClientModalOpen) {
+        event.preventDefault();
+        handleCloseStudentModal();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [openCreateStudentModal, isClientModalOpen, handleCloseStudentModal]);
 
   return (
-    <Styles.SectionContainer border> {/* Using a generic SectionContainer, or could be Styles.Section from Home.styles if kept there */}
+    <Styles.SectionContainer border>
+      <Styles.FilterContainer>
+        <Styles.FilterCard 
+          active={activeFilter === 'todos'} 
+          onClick={() => handleFilterChange('todos')}
+        >
+          Matriculados
+        </Styles.FilterCard>
+        <Styles.FilterCard 
+          active={activeFilter === 'ativos'} 
+          onClick={() => handleFilterChange('ativos')}
+        >
+          Ativos
+        </Styles.FilterCard>
+        <Styles.FilterCard 
+          active={activeFilter === 'bloqueados'} 
+          onClick={() => handleFilterChange('bloqueados')}
+        >
+          Bloqueados
+        </Styles.FilterCard>
+        <Styles.FilterCard 
+          active={activeFilter === 'encerrados'} 
+          onClick={() => handleFilterChange('encerrados')}
+        >
+          Encerrados
+        </Styles.FilterCard>
+        <Styles.FilterCard 
+          active={activeFilter === 'antigos'} 
+          onClick={() => handleFilterChange('antigos')}
+        >
+          Antigos
+        </Styles.FilterCard>
+      </Styles.FilterContainer>
+      
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div style={{ maxWidth: "100%", flexGrow: 1, marginRight: "1rem" }}>
-          <Styles.Input // Assuming Input style will be in StudentsSection.styles.ts
+          <Styles.SearchInput
             value={studentSearchInput}
-            onChange={(e) => {
-              setStudentSearchInput(e.target.value);
-              setStudentCurrentPage(1);
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              handleSearchInputChange(e.target.value);
             }}
             placeholder="Pesquisar Aluno"
           />
         </div>
-        <Styles.CadastrarButton onClick={openCreateStudentModal}> {/* Assuming CadastrarButton style will be in StudentsSection.styles.ts */}
+        <Styles.CadastrarButton onClick={openCreateStudentModal}>
           Cadastrar Aluno [F4]
         </Styles.CadastrarButton>
       </div>
+      
       {isStudentsLoading ? (
-        <Styles.LoaderDiv> {/* Assuming LoaderDiv style will be in StudentsSection.styles.ts or a shared one */}
+        <Styles.LoaderDiv>
           <Loader color="#000" />
         </Styles.LoaderDiv>
       ) : (
@@ -227,18 +202,16 @@ const StudentsSection: React.FC<StudentsSectionProps> = (/* props */) => {
           onPageChange={handleStudentPageChange}
           onRowsPerPageChange={handleStudentRowsPerPageChange}
           onRowClick={handleStudentRowClick}
-          // showActions -- REMOVE THIS
-          noDelete // Assuming noDelete is a permanent prop here
-          // onView={openViewStudentModal} -- REMOVE OR COMMENT OUT
-          // onEdit={openEditStudentModal} -- REMOVE OR COMMENT OUT
+          noDelete
         />
       )}
+      
       {isClientModalOpen && (
         <ClientModal
           open={isClientModalOpen}
           mode={clientModalMode}
           initialData={getInitialStudentModalData()}
-          alunoIdToEdit={clientModalMode === StudentModalMode.EDIT && selectedClientState ? selectedClientState.id : undefined}
+          alunoIdToEdit={clientModalMode === StudentModalMode.EDIT && selectedClientState ? String(selectedClientState.alunoID) : undefined}
           onClose={handleCloseStudentModal}
           onSaveComplete={handleStudentSaveComplete}
         />

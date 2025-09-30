@@ -5,7 +5,12 @@ export enum ModalMode {
 }
 
 export interface PlanoFormData {
-  nome: string;
-  valor_mensal: number; // Consistent with page display, will map to 'valor' for DB
-  ativo: boolean;
+  modalidadeNome: string;
+  modalidadeMensal: number;
+  modalidadeAtiva: boolean;
+  
+  // Compatibility fields
+  nome?: string;
+  valor_mensal?: number;
+  ativo?: boolean;
 }

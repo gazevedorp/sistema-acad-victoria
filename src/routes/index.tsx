@@ -8,7 +8,7 @@ import Products from "../pages/Products/Products";
 import Caixa from "../pages/Caixa/Caixa";
 import FormasPagamento from "../pages/FormasPagamento/FormasPagamento";
 import Permissoes from "../pages/Permissoes/Permissoes";
-import ManageCaixas from "../pages/ManageCaixas/ManageCaixas";
+// import ManageCaixas from "../pages/ManageCaixas/ManageCaixas";
 import FechamentoCaixaTemplatePage from "../pages/FechamentoCaixaTemplate/FechamentoCaixaTemplate";
 import Turmas from "../pages/Turmas/Turmas";
 import Relatorios from "../pages/Relatorios/Relatorios";
@@ -42,7 +42,7 @@ const AppRoutes: React.FC = () => {
           <Route path="caixa" element={<Caixa />} />
           <Route path="formas-pagamento" element={<FormasPagamento />} />
           <Route path="permissoes" element={<Permissoes />} />
-          <Route path="manage-caixas" element={<ManageCaixas />} />
+          {/* <Route path="manage-caixas" element={<ManageCaixas />} /> */}
           <Route path="fechamento-template" element={<FechamentoCaixaTemplatePage />} />
         </Route>
 

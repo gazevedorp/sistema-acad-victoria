@@ -30,15 +30,25 @@ const Planos: React.FC = () => {
   const fetchPlanos = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
-      .from("planos")
+      .from("modalidades_old")
       .select("*")
-      .order("nome", { ascending: true });
+      .eq("modalidadeExcluida", false)
+      .order("modalidadeNome", { ascending: true });
+    
     if (error) {
       toast.error("Erro ao buscar planos.");
       console.error("Supabase error:", error);
       setPlanos([]);
     } else if (data) {
-      setPlanos(data as Plano[]);
+      // Map modalidades_old structure to Plano interface
+      const mappedData = data.map((item: any) => ({
+        ...item,
+        id: item.modalidadeID?.toString(),
+        nome: item.modalidadeNome,
+        valor: item.modalidadeMensal,
+        ativo: item.modalidadeAtiva
+      }));
+      setPlanos(mappedData as Plano[]);
     } else {
       setPlanos([]);
     }
@@ -84,12 +94,6 @@ const Planos: React.FC = () => {
   const openEditModal = (plano: Plano) => {
     setSelectedPlano(plano);
     setModalMode(ModalMode.EDIT);
-    setModalOpen(true);
-  };
-
-  const openViewModal = (plano: Plano) => {
-    setSelectedPlano(plano);
-    setModalMode(ModalMode.VIEW);
     setModalOpen(true);
   };
 
@@ -159,10 +163,8 @@ const Planos: React.FC = () => {
             totalRows={totalRows}
             onPageChange={handlePageChange}
             onRowsPerPageChange={handleRowsPerPageChange}
-            showActions={true}
-            onEdit={openEditModal}
-            onView={openViewModal}
-            noDelete={true}
+            showActions={false}
+            onRowClick={openEditModal}
           />
         </>
       )}
@@ -172,7 +174,7 @@ const Planos: React.FC = () => {
           open={modalOpen}
           mode={modalMode}
           initialData={getInitialModalData()}
-          planoIdToEdit={ (modalMode === ModalMode.EDIT || modalMode === ModalMode.VIEW) && selectedPlano ? selectedPlano.id : undefined}
+          planoIdToEdit={ (modalMode === ModalMode.EDIT || modalMode === ModalMode.VIEW) && selectedPlano ? selectedPlano.modalidadeID?.toString() || selectedPlano.id : undefined}
           onClose={handleCloseModal}
           onSaveComplete={handleSaveComplete}
         />

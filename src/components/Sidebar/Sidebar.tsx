@@ -49,17 +49,17 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
 
   const menuItems = useMemo(() => [
     { icon: <FiHome />, text: "Home [F1]", route: "/" },
-    { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
-    { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
+    // { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
+    // { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
     { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
-    { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
-    { icon: <FiList />, text: "Modalidades [F7]", route: "/modalidades" },
-    { icon: <FiUser />, text: "Usuários [F8]", route: "/users" },
-    { icon: <FiBarChart2 />, text: "Relatórios [F9]", route: "/relatorios" },
-    { icon: <FiCreditCard />, text: "Formas Pagamento [F10]", route: "/formas-pagamento" },
-    { icon: <FiShield />, text: "Permissões [F11]", route: "/permissoes" },
-    { icon: <FiArchive />, text: "Gerenciar Caixas", route: "/manage-caixas" },
-    { icon: <FiSettings />, text: "Templates Fechamento", route: "/fechamento-template" },
+    // { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
+    // { icon: <FiList />, text: "Modalidades [F7]", route: "/modalidades" },
+    // { icon: <FiUser />, text: "Usuários [F8]", route: "/users" },
+    // { icon: <FiBarChart2 />, text: "Relatórios [F9]", route: "/relatorios" },
+    // { icon: <FiCreditCard />, text: "Formas Pagamento [F10]", route: "/formas-pagamento" },
+    // { icon: <FiShield />, text: "Permissões [F11]", route: "/permissoes" },
+    // { icon: <FiArchive />, text: "Gerenciar Caixas", route: "/manage-caixas" },
+    // { icon: <FiSettings />, text: "Templates Fechamento", route: "/fechamento-template" },
   ], []);
 
   const keyRouteMap = useMemo(() => {

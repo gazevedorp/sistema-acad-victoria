@@ -33,12 +33,11 @@ export interface DadosCadastraisFormData {
   cpf: string;
   rg?: string;
   data_nascimento: string;
+  sexo: string; // 'M' para masculino, 'F' para feminino
   telefone: string;
   email?: string;
   cep: string;
   rua: string;
-  numero: string;
-  complemento?: string;
   bairro: string;
   cidade: string;
   estado: string;
@@ -46,7 +45,6 @@ export interface DadosCadastraisFormData {
   responsavelNome?: string;
   responsavelCpf?: string;
   responsavelTelefone?: string;
-  responsavelParentesco?: string;
 }
 
 export interface Aluno extends DadosCadastraisFormData {
@@ -68,6 +66,8 @@ export interface MatriculaFormData {
   diaVencimento?: number;
   statusMatricula: 'ativa' | 'inativa';
   observacoesMatricula?: string;
+  valorPlano?: string;
+  valorCobrado?: string;
 }
 
 export function isValidCPF(cpf: string | null | undefined): boolean {
@@ -109,12 +109,11 @@ export const dadosCadastraisSchema = yup.object().shape({
   cpf: yup.string().required("CPF é obrigatório").transform(value => String(value).replace(/[^\d]/g, '')).test('cpf-valido', 'CPF inválido', value => isValidCPF(value)),
   rg: yup.string().optional().nullable().default(undefined),
   data_nascimento: yup.string().required("Data de Nascimento é obrigatória").transform(normalizeDate).matches(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  sexo: yup.string().required("Sexo é obrigatório").oneOf(['M', 'F'], "Selecione M ou F"),
   telefone: yup.string().required("Telefone é obrigatório").transform(value => String(value).replace(/[^\d]/g, '')).matches(/^\d{10,11}$/, "Telefone inválido"),
   email: yup.string().email("E-mail inválido").optional().nullable().default(undefined),
   cep: yup.string().required("CEP é obrigatório").transform(value => String(value).replace(/[^\d]/g, '')).matches(/^\d{8}$/, "CEP deve ter 8 dígitos"),
   rua: yup.string().required("Rua é obrigatória").min(2, "Rua muito curta"),
-  numero: yup.string().required("Número é obrigatório"),
-  complemento: yup.string().optional().nullable().default(undefined),
   bairro: yup.string().required("Bairro é obrigatório").min(2, "Bairro muito curto"),
   cidade: yup.string().required("Cidade é obrigatória").min(2, "Cidade muito curta"),
   estado: yup.string().required("Estado (UF) é obrigatório").length(2, "UF inválida").matches(/^[A-Za-z]{2}$/, "UF inválida"),
@@ -122,7 +121,6 @@ export const dadosCadastraisSchema = yup.object().shape({
   responsavelNome: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.required("Nome do Responsável é obrigatório").min(3), otherwise: schema => schema.optional().nullable().default(undefined)}),
   responsavelCpf: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.optional().nullable().default(undefined).transform(v => v ? String(v).replace(/[^\d]/g, '') : null).test('cpf-valido-resp', 'CPF do Resp. inválido', v => !v || isValidCPF(v)) , otherwise: schema => schema.optional().nullable().default(undefined)}),
   responsavelTelefone: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.optional().nullable().default(undefined).transform(v => v ? String(v).replace(/[^\d]/g, '') : null).test('tel-valido-resp', 'Telefone do Resp. inválido', v => !v || /^\d{10,11}$/.test(v)) , otherwise: schema => schema.optional().nullable().default(undefined)}),
-  responsavelParentesco: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.required("Parentesco é obrigatório"), otherwise: schema => schema.optional().nullable().default(undefined)}),
 });
 
 export const matriculaSchema = yup.object().shape({
