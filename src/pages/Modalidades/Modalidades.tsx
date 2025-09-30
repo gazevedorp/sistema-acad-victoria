@@ -98,7 +98,7 @@ const Modalidades: React.FC = () => {
   };
 
   const handleSaveComplete = useCallback(
-    (error: any | null, savedData?: Modalidade, operationMode?: ModalMode) => {
+    (error: any | null, _savedData?: Modalidade, operationMode?: ModalMode) => {
       if (error) {
         toast.error(
           `Erro ao ${

@@ -45,7 +45,6 @@ const CashierSection: React.FC<CashierSectionProps> = ({
   
   const {
     activeCaixaDetails,
-    alunosListCaixa,
     produtosListCaixa,
     isLoadingCaixaSelectData,
     isSubmittingCaixaAction,
@@ -431,7 +430,6 @@ const CashierSection: React.FC<CashierSectionProps> = ({
           open={isFinanceModalOpen}
           onClose={handleCloseFinanceModal}
           onSave={handleSaveMovimentacaoSubmit}
-          alunosList={alunosListCaixa}
           produtosList={produtosListCaixa}
           formasPagamentoList={HARDCODED_FORMAS_PAGAMENTO}
         />

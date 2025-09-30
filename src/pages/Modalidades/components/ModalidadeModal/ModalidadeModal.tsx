@@ -103,7 +103,7 @@ const ModalidadeModal: React.FC<ModalidadeModalProps> = ({
       console.error("Error saving modalidade:", error.message || error);
       // It's good practice to cast data to Modalidade for the error callback if possible,
       // or at least ensure it's ModalidadeFormData.
-      onSaveComplete?.(error, data as ModalidadeFormData, mode);
+      onSaveComplete?.(error, data as any, mode);
     } finally {
       setIsSubmitting(false);
     }

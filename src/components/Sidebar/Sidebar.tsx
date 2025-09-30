@@ -3,18 +3,8 @@ import * as Styles from "./Sidebar.styles";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FiHome,
-  FiUser,
-  FiPackage,
-  FiBarChart2,
   FiLogOut,
-  FiTable,
   FiFile,
-  FiBox,
-  FiList,
-  FiCreditCard,
-  FiShield,
-  FiSettings,
-  FiArchive,
 } from "react-icons/fi";
 import { useAuthStore } from "../../store/authStore";
 

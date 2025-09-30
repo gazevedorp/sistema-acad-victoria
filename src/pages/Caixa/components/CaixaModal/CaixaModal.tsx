@@ -3,8 +3,8 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Styles from "./CaixaModal.styles";
 import Loader from "../../../../components/Loader/Loader"; // Ajuste o caminho
-import { supabase } from "../../../../lib/supabase"; // Ajuste o caminho
-import { toast } from 'react-toastify'; // Adicionado para feedback de erro na busca de mensalidade
+
+
 
 import {
   CaixaModalFormData,
@@ -19,41 +19,18 @@ interface CaixaModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: Partial<CaixaModalFormData>) => Promise<void | { error?: any }>;
-  alunosList: AlunoParaSelect[];
+  alunosList?: AlunoParaSelect[];
   produtosList: ProdutoParaSelect[];
   formasPagamentoList: FormaPagamentoParaSelect[];
 }
 
-// Nova função para buscar o valor da mensalidade
-async function fetchValorMensalidade(alunoId: string): Promise<number | undefined> {
-  if (!alunoId) return undefined;
-  try {
-    const { data, error } = await supabase
-      .from('matriculas') // Sua tabela de matrículas
-      .select('valor_final_cobrado') // O campo que guarda o valor líquido da mensalidade
-      .eq('id_aluno', alunoId)
-      .eq('ativo_atual', true) // Busca a matrícula ativa
-      .maybeSingle();
 
-    if (error) {
-      console.error("Erro ao buscar valor da mensalidade:", error.message);
-      toast.error("Não foi possível buscar o valor da mensalidade do aluno.");
-      return undefined;
-    }
-    return data?.valor_final_cobrado;
-  } catch (err) {
-    console.error("Exceção ao buscar valor da mensalidade:", err);
-    toast.error("Erro inesperado ao buscar valor da mensalidade.");
-    return undefined;
-  }
-}
 
 
 const CaixaModal: React.FC<CaixaModalProps> = ({
   open,
   onClose,
   onSave,
-  alunosList,
   produtosList,
   formasPagamentoList,
 }) => {
@@ -69,15 +46,15 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
     setValue,
     getValues, // Adicionado para ler valores atuais do formulário
   } = useForm<CaixaModalFormData>({
-    resolver: yupResolver(caixaModalSchema),
+    resolver: yupResolver(caixaModalSchema) as any,
     defaultValues: {
-      tipo: TipoMovimentacaoCaixa.ENTRADA, // Changed
-      valor: undefined,
+      tipo: TipoMovimentacaoCaixa.ENTRADA,
+      valor: 0,
       forma_pagamento: "",
       descricao: "",
-      cliente_id: undefined,
-      produto_id: undefined,
-      quantidade: undefined,
+      cliente_id: "",
+      produto_id: "",
+      quantidade: 1,
     },
   });
 
@@ -101,7 +78,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
       // Define o estado inicial de readOnly para o campo valor
       setIsValorReadOnly(defaultTipo !== TipoMovimentacaoCaixa.SAIDA_CAIXA);
       if (defaultTipo === TipoMovimentacaoCaixa.SAIDA_CAIXA) {
-        setValue("valor", undefined); // Limpa o valor para Saída de Caixa
+        setValue("valor", 0);
       }
     }
   }, [open, reset, getValues, selectedTipoMovimentacao]); // selectedTipoMovimentacao adicionado para resetar condicionalmente
@@ -112,7 +89,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
       // Se não for mensalidade nem venda, e não for saída, limpa o valor e torna editável (caso de mudança de tipo)
       // A condição para saída é tratada abaixo
       if (selectedTipoMovimentacao !== TipoMovimentacaoCaixa.SAIDA_CAIXA) {
-        setValue("valor", undefined);
+        setValue("valor", 0);
       }
     }
   }, [selectedTipoMovimentacao, selectedClienteId, setValue]);
@@ -125,11 +102,11 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
       if (produto && typeof produto.valor === 'number') {
         setValue("valor", produto.valor * watchedQuantidade, { shouldValidate: true });
       } else {
-        setValue("valor", undefined); // Limpa se o produto não tiver valor
+        setValue("valor", 0);
       }
     } else if (selectedTipoMovimentacao === TipoMovimentacaoCaixa.VENDA_PRODUTO) {
       // Se for venda mas algum dado estiver faltando para o cálculo, limpa o valor
-      setValue("valor", undefined);
+      setValue("valor", 0);
       setIsValorReadOnly(true); // Ainda é calculado, então readonly
     }
   }, [selectedTipoMovimentacao, selectedProdutoId, watchedQuantidade, produtosList, setValue]);
@@ -182,7 +159,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
           <Styles.CloseButton onClick={onClose}>×</Styles.CloseButton>
         </Styles.ModalHeader>
         <Styles.ModalBody>
-          <Styles.Form onSubmit={handleSubmit(onSubmit)}>
+          <Styles.Form onSubmit={handleSubmit(onSubmit as any)}>
             <Styles.FormGroup>
               <Styles.Label htmlFor="tipo">Tipo de Movimentação</Styles.Label>
               <Styles.Select {...register("tipo")} id="tipo">

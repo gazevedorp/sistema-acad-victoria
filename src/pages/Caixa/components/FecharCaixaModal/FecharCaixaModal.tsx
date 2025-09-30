@@ -15,8 +15,7 @@ interface FecharCaixaModalProps {
 const FecharCaixaModal: React.FC<FecharCaixaModalProps> = ({ 
     open, 
     onClose, 
-    onConfirmFechar,
-    caixaId
+    onConfirmFechar
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,7 +25,7 @@ const FecharCaixaModal: React.FC<FecharCaixaModalProps> = ({
     formState: { errors },
     reset,
   } = useForm<FecharCaixaFormData>({
-    resolver: yupResolver(fecharCaixaSchema),
+    resolver: yupResolver(fecharCaixaSchema) as any,
     defaultValues: {
       observacoes_fechamento: '',
     }
@@ -80,7 +79,7 @@ const FecharCaixaModal: React.FC<FecharCaixaModalProps> = ({
                 Cancelar
               </Styles.SecondaryButton>
               <Styles.PrimaryButton type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader size={20} /> : "Confirmar e Fechar Caixa"}
+                {isSubmitting ? <Loader /> : "Confirmar e Fechar Caixa"}
               </Styles.PrimaryButton>
             </Styles.ButtonContainer>
           </Styles.Form>

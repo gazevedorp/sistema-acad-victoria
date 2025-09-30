@@ -37,7 +37,7 @@ export const ModalHeader = styled.div`
   h2 {
     margin: 0;
     font-size: 1.4rem; // Larger title
-    color: ${COLORS.textHeadline}; // Use headline color
+    color: ${COLORS.textBody};
   }
 `;
 
@@ -79,13 +79,13 @@ export const FormControl = styled.div`
     border: 1px solid ${COLORS.borderDefault};
     border-radius: 4px;
     font-size: 1rem;
-    background-color: ${COLORS.background}; // Light background for inputs
+    background-color: ${COLORS.backgroundLight};
     color: ${COLORS.textBody};
 
     &:focus {
       border-color: ${COLORS.primary};
       outline: none;
-      box-shadow: 0 0 0 2px ${COLORS.primaryAlpha}; // Focus ring
+      box-shadow: 0 0 0 2px ${COLORS.primaryLightFocus};
     }
 
     &:disabled {
@@ -122,13 +122,13 @@ export const Button = styled.button<ButtonProps>`
   transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 
   ${({ variant = 'secondary' }) => `
-    background-color: ${variant === 'primary' ? COLORS.primary : COLORS.secondaryBackground};
+    background-color: ${variant === 'primary' ? COLORS.primary : COLORS.backgroundLight};
     color: ${variant === 'primary' ? COLORS.white : COLORS.textBody};
     border: 1px solid ${variant === 'primary' ? COLORS.primary : COLORS.borderDefault};
 
     &:hover:not(:disabled) {
-      background-color: ${variant === 'primary' ? COLORS.primaryHover : COLORS.secondaryBackgroundHover};
-      border-color: ${variant === 'primary' ? COLORS.primaryHover : COLORS.borderDefaultHover};
+      background-color: ${variant === 'primary' ? COLORS.primaryDarker : COLORS.backgroundDisabled};
+      border-color: ${variant === 'primary' ? COLORS.primaryDarker : COLORS.borderDefault};
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
   `}
