@@ -37,7 +37,7 @@ export const useStudentsStore = create<StudentsState>((set, get) => ({
       case 'encerrados':
         return 'Alunos Encerrados';
       case 'antigos':
-        return 'Alunos Antigos';
+        return 'Alunos Não Matriculados';
       default:
         return 'Alunos';
     }

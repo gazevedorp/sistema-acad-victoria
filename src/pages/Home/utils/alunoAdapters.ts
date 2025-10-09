@@ -101,7 +101,7 @@ export const formatSexo = (sexo: number): string => {
 export const createAlunoSummary = (aluno: AlunoOld): string => {
   const parts = [
     `Nome: ${aluno.alunoNome}`,
-    `Matrícula: ${aluno.alunoMatricula}`,
+    `ID: ${aluno.alunoID}`,
     `Sexo: ${aluno.alunoSexo === 1 ? "Feminino" : "Masculino"}`,
     aluno.alunoCelular ? `Celular: ${formatPhone(aluno.alunoCelular)}` : null,
     aluno.alunoEmail ? `Email: ${aluno.alunoEmail}` : null,

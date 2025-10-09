@@ -64,13 +64,46 @@ async function fetchModalidadeNome(modalidadeID: number): Promise<string> {
     .select("modalidadeNome")
     .eq("modalidadeID", modalidadeID)
     .maybeSingle();
-  
+
   if (error) {
     console.error("MatriculaForm: Erro ao buscar modalidade:", error.message);
     return "";
   }
-  
+
   return data?.modalidadeNome || "";
+}
+
+async function fetchModalidadesAtivas(): Promise<Array<{modalidadeID: number, modalidadeNome: string, modalidadeMensal: number}>> {
+  const { data, error } = await supabase
+    .from("modalidades_old")
+    .select("modalidadeID, modalidadeNome, modalidadeMensal")
+    .eq("modalidadeAtiva", true)
+    .eq("modalidadeExcluida", false)
+    .order("modalidadeNome", { ascending: true });
+
+  if (error) {
+    console.error("MatriculaForm: Erro ao buscar modalidades:", error.message);
+    return [];
+  }
+
+  return data || [];
+}
+
+async function getNextMatriculaNumero(alunoID: number): Promise<number> {
+  const { data, error } = await supabase
+    .from("matricula_old")
+    .select("matriculaNumero")
+    .eq("alunoID", alunoID)
+    .order("matriculaNumero", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("MatriculaForm: Erro ao buscar último número de matrícula:", error.message);
+    return 1;
+  }
+
+  return (data?.matriculaNumero || 0) + 1;
 }
 
 interface MatriculaFormProps {
@@ -93,12 +126,17 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
 
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [hasMatricula, setHasMatricula] = useState<boolean>(true);
 
   const [existingMatriculaId, setExistingMatriculaId] = useState<
     string | undefined
   >(undefined);
   const [modalidadeNome, setModalidadeNome] = useState<string>("");
+
+  // Estados para criação de matrícula
+  const [modalidadesDisponiveis, setModalidadesDisponiveis] = useState<Array<{modalidadeID: number, modalidadeNome: string, modalidadeMensal: number}>>([]);
+  const [modalidadeSelecionada, setModalidadeSelecionada] = useState<number | null>(null);
+  const [isCreatingMatricula, setIsCreatingMatricula] = useState(false);
 
   const getDefaultMatriculaValues = useCallback(() => {
     const hoje = new Date();
@@ -106,7 +144,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       matriculaItens: [],
       dataMatricula: hoje.toISOString().split("T")[0],
       diaVencimento: hoje.getDate(),
-      statusMatricula: "ativa" as "ativa" | "inativa",
+      matriculaSituacao: "PENDENTE" as any,
       observacoesMatricula: "",
       valorPlano: "0.00",
       valorCobrado: "0.00",
@@ -144,6 +182,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
           if (matriculaError) throw matriculaError;
 
           if (matriculaData) {
+            setHasMatricula(true);
             // Buscar nome da modalidade
             if (matriculaData.modalidadeID) {
               const nomeModalidade = await fetchModalidadeNome(matriculaData.modalidadeID);
@@ -169,8 +208,8 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
               diaVencimento:
                 matriculaData.matriculaDiaVencimento ??
                 getDefaultMatriculaValues().diaVencimento,
-              statusMatricula:
-                matriculaData.matriculaSituacao === "ATIVA" ? "ativa" : "inativa",
+              matriculaSituacao:
+                (matriculaData.matriculaSituacao || "PENDENTE") as any,
               observacoesMatricula: "", // Não há campo de observações na estrutura atual
               matriculaItens: mappedItens,
               valorPlano: matriculaData.matriculaValor || "0.00", // O valor do plano vem do matriculaValor
@@ -181,6 +220,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
 
 
           } else {
+            setHasMatricula(false);
             reset(getDefaultMatriculaValues());
             setExistingMatriculaId(undefined);
           }
@@ -200,6 +240,121 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
     };
     loadMatriculaData();
   }, [alunoId, mode, reset, getDefaultMatriculaValues]);
+
+  // Carregar modalidades disponíveis quando não houver matrícula
+  useEffect(() => {
+    const loadModalidades = async () => {
+      if (!hasMatricula && (isEditMode || isViewMode)) {
+        const modalidades = await fetchModalidadesAtivas();
+        setModalidadesDisponiveis(modalidades);
+      }
+    };
+    loadModalidades();
+  }, [hasMatricula, isEditMode, isViewMode]);
+
+  // Função para criar nova matrícula
+  const handleCreateMatricula = async () => {
+    if (!modalidadeSelecionada) {
+      onSaveComplete(new Error("Selecione uma modalidade"), undefined);
+      return;
+    }
+
+    setIsCreatingMatricula(true);
+    try {
+      const modalidade = modalidadesDisponiveis.find(m => m.modalidadeID === modalidadeSelecionada);
+      if (!modalidade) throw new Error("Modalidade não encontrada");
+
+      const matriculaNumero = await getNextMatriculaNumero(parseInt(alunoId));
+      const hoje = new Date();
+      const dataInicio = `${hoje.getDate().toString().padStart(2, '0')}/${(hoje.getMonth() + 1).toString().padStart(2, '0')}/${hoje.getFullYear()}`;
+      const diaVencimento = hoje.getDate();
+
+      const matriculaPayload = {
+        alunoID: parseInt(alunoId),
+        modalidadeID: modalidade.modalidadeID,
+        matriculaNumero: matriculaNumero,
+        matriculaDtInicio: dataInicio,
+        matriculaDtInicioGeral: dataInicio,
+        matriculaValor: formatMoneyToDB(modalidade.modalidadeMensal),
+        matriculaForma: "MENSAL",
+        matriculaSituacao: "PENDENTE",
+        matriculaDiaVencimento: diaVencimento,
+        matriculaDtFim: null,
+        matriculaDesconto: formatMoneyToDB(0),
+        matriculaDtBloqueio: null,
+        matriculaDtTrancamento: null,
+        matriculaDtEncerramento: null,
+        matriculaMotivoBloqueio: null,
+        matriculaMotivoEncerramento: null,
+        matriculaMotivoTrancamento: null,
+        matriculaExcluida: false,
+      };
+
+      const { data: newMatricula, error: matriculaError } = await supabase
+        .from("matricula_old")
+        .insert(matriculaPayload)
+        .select("matriculaID")
+        .single();
+
+      if (matriculaError) throw matriculaError;
+      if (!newMatricula || !newMatricula.matriculaID) {
+        throw new Error("Falha ao criar matrícula.");
+      }
+
+      // Criar recebimento automático para a primeira mensalidade
+      const mesesAbrev = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+      const mesRef = mesesAbrev[hoje.getMonth()];
+      const anoRef = hoje.getFullYear();
+      const historicoRecebimento = `MENSALIDADE REF: ${mesRef}/${anoRef} - ${modalidade.modalidadeNome}`;
+
+      const recebimentoPayload = {
+        idRelaciona: newMatricula.matriculaID,
+        planoID: modalidade.modalidadeID,
+        alunoID: parseInt(alunoId),
+        contaID: 0,
+        recebDtVencimento: dataInicio,
+        recebDtEmissao: dataInicio,
+        recebValor: formatMoneyToDB(modalidade.modalidadeMensal),
+        recebMulta: '0,00',
+        recebPago: false,
+        recebHistorico: historicoRecebimento,
+        recebExcluido: false,
+        funcID: 0,
+        pagoRecorrente: 0,
+        RecebDesconto: '0,00',
+        recebFuncIdIsentou: 0,
+      };
+
+      const { error: recebimentoError } = await supabase
+        .from("recebimentos_old")
+        .insert(recebimentoPayload);
+
+      if (recebimentoError) {
+        console.error("Erro ao criar recebimento automático:", recebimentoError);
+        // Não bloqueia a criação da matrícula, apenas loga o erro
+      }
+
+      onSaveComplete(null, {
+        dataMatricula: dataInicio,
+        diaVencimento: diaVencimento,
+        matriculaSituacao: "PENDENTE" as any,
+        observacoesMatricula: "",
+        matriculaItens: [],
+        valorPlano: formatMoneyToDB(modalidade.modalidadeMensal),
+        valorCobrado: formatMoneyToDB(modalidade.modalidadeMensal),
+      });
+
+      // Recarregar dados
+      setHasMatricula(true);
+      setExistingMatriculaId(newMatricula.matriculaID);
+
+    } catch (error: any) {
+      console.error("Erro ao criar matrícula:", error);
+      onSaveComplete(error, undefined);
+    } finally {
+      setIsCreatingMatricula(false);
+    }
+  };
 
 
 
@@ -232,7 +387,7 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       matriculaDesconto: formatMoneyToDB(0),
       matriculaValor: formatMoneyToDB(parseMoneyFromDB(formData.valorCobrado || "0.00")),
       matriculaForma: "MENSAL",
-      matriculaSituacao: matriculaInfoGeral.statusMatricula === "ativa" ? "ATIVA" : "INATIVA",
+      // Status não é alterado via formulário - mantém o valor original do banco
       matriculaDiaVencimento: matriculaInfoGeral.diaVencimento,
       matriculaDtBloqueio: null,
       matriculaDtTrancamento: null,
@@ -340,6 +495,106 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
     );
   }
 
+  if (!hasMatricula && (isEditMode || isViewMode)) {
+    const modalidadeInfo = modalidadeSelecionada
+      ? modalidadesDisponiveis.find(m => m.modalidadeID === modalidadeSelecionada)
+      : null;
+
+    const hoje = new Date();
+    const dataInicioFormatted = hoje.toISOString().split('T')[0];
+
+    return (
+      <div>
+        <Styles.SectionTitle style={{ marginTop: "0", fontSize: "1.1rem", marginBottom: "20px" }}>
+          Criar Nova Matrícula
+        </Styles.SectionTitle>
+
+        <Styles.FormGroup>
+          <Styles.Label htmlFor="modalidade">Modalidade/Plano *</Styles.Label>
+          <Styles.Select
+            id="modalidade"
+            value={modalidadeSelecionada || ''}
+            onChange={(e) => setModalidadeSelecionada(e.target.value ? parseInt(e.target.value) : null)}
+            disabled={isCreatingMatricula}
+          >
+            <option value="">Selecione uma modalidade...</option>
+            {modalidadesDisponiveis.map((mod) => (
+              <option key={mod.modalidadeID} value={mod.modalidadeID}>
+                {mod.modalidadeNome} - {formatMoneyToDisplay(mod.modalidadeMensal)}
+              </option>
+            ))}
+          </Styles.Select>
+        </Styles.FormGroup>
+
+        {modalidadeInfo && (
+          <>
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label>Valor Mensal</Styles.Label>
+                <Styles.Input
+                  type="text"
+                  value={formatMoneyToDisplay(modalidadeInfo.modalidadeMensal)}
+                  disabled
+                  readOnly
+                />
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label>Forma de Pagamento</Styles.Label>
+                <Styles.Input
+                  type="text"
+                  value="MENSAL"
+                  disabled
+                  readOnly
+                />
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormRow>
+              <Styles.FormGroup>
+                <Styles.Label>Data de Início</Styles.Label>
+                <Styles.Input
+                  type="date"
+                  value={dataInicioFormatted}
+                  disabled
+                  readOnly
+                />
+              </Styles.FormGroup>
+              <Styles.FormGroup>
+                <Styles.Label>Dia de Vencimento</Styles.Label>
+                <Styles.Input
+                  type="number"
+                  value={hoje.getDate()}
+                  disabled
+                  readOnly
+                />
+              </Styles.FormGroup>
+            </Styles.FormRow>
+
+            <Styles.FormGroup>
+              <Styles.Label>Status Inicial</Styles.Label>
+              <Styles.Input
+                type="text"
+                value="PENDENTE"
+                disabled
+                readOnly
+              />
+            </Styles.FormGroup>
+          </>
+        )}
+
+        <Styles.SubmitButtonContainer style={{ marginTop: '20px' }}>
+          <Styles.SubmitButton
+            type="button"
+            onClick={handleCreateMatricula}
+            disabled={!modalidadeSelecionada || isCreatingMatricula}
+          >
+            {isCreatingMatricula ? <Loader /> : "Criar Matrícula"}
+          </Styles.SubmitButton>
+        </Styles.SubmitButtonContainer>
+      </div>
+    );
+  }
+
   return (
     //@ts-expect-error
     <Styles.Form onSubmit={handleSubmit(onSubmit)}>
@@ -423,12 +678,14 @@ const MatriculaForm: React.FC<MatriculaFormProps> = ({
       </Styles.FormRow>
       <Styles.FormGroup>
         <Styles.Label>Status</Styles.Label>
-        <Styles.Select {...register("statusMatricula")} disabled={isViewMode}>
-          <option value="ativa">Ativa</option>
-          <option value="inativa">Inativa</option>
-        </Styles.Select>
-        {errors.statusMatricula && (
-          <Styles.ErrorMsg>{errors.statusMatricula.message}</Styles.ErrorMsg>
+        <Styles.Input
+          type="text"
+          {...register("matriculaSituacao")}
+          disabled
+          readOnly
+        />
+        {errors.matriculaSituacao && (
+          <Styles.ErrorMsg>{errors.matriculaSituacao.message}</Styles.ErrorMsg>
         )}
       </Styles.FormGroup>
       <Styles.FormGroup>

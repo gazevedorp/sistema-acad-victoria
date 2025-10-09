@@ -33,7 +33,7 @@ export const ModalOverlay = styled.div`
 
 export const ModalContainer = styled.div`
   background-color: ${COLORS.white};
-  width: 700px;
+  width: 1000px;
   max-width: 95%;
   border-radius: 6px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
@@ -154,7 +154,18 @@ export const FormRow = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px 16px;
-  align-items: start; 
+  align-items: start;
+`;
+
+export const FormRow3 = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 16px;
+  align-items: start;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 export const Label = styled.label`
@@ -201,7 +212,14 @@ export const Select = styled.select`
   background-repeat: no-repeat;
   background-position: right 0.6rem center;
   background-size: 14px 10px;
-  padding-right: 2.2rem; 
+  padding-right: 2.2rem;
+`;
+
+export const TextArea = styled.textarea`
+  ${baseInputStyles}
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
 `;
 
 export const SubmitButtonContainer = styled.div`

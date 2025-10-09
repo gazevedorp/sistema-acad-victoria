@@ -44,13 +44,12 @@ Implementado suporte completo para a estrutura legada:
 ```typescript
 interface AlunoOld {
   alunoID: number;
-  alunoMatricula: number;  
   alunoNome: string;
   alunoDataNascimento: string;
   alunoCelular: string | null;
   alunoEmail: string | null;
   alunoExcluido: boolean;
-
+  // ... outros campos da estrutura legada
 }
 ```
 
@@ -61,6 +60,7 @@ interface AlunoOld {
 - ✅ Formatação de datas (DD/MM/AAAA ↔ ISO)
 - ✅ Formatação de telefones, CPF e outros campos
 - ✅ Compatibilidade com modals existentes
+- ✅ Validação de status via tabela `matricula_old` usando `alunoID`
 
 ### **2. Hooks Especializados**
 Cada componente tem seu próprio hook:

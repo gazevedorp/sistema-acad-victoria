@@ -12,7 +12,6 @@ export interface ClienteAtivoSummary {
 
 export interface AlunoOld {
   alunoID: number;
-  alunoMatricula: number;
   alunoNome: string;
   alunoEndereco: string | null;
   alunoBairro: string | null;
@@ -172,9 +171,11 @@ export const fetchStudents = async (
     let query;
     
     if (matriculaSituacao === 'antigos') {
+      // Buscar alunos que NÃO têm matrícula na tabela matricula_old
       const { data: alunosComMatricula } = await supabase
         .from("matricula_old")
-        .select("alunoID");
+        .select("alunoID")
+        .not("matriculaExcluida", "eq", true);
       
       const idsComMatricula = alunosComMatricula?.map(m => m.alunoID) || [];
       query = supabase
@@ -186,23 +187,28 @@ export const fetchStudents = async (
         query = query.not('alunoID', 'in', `(${idsComMatricula.join(',')})`);
       }
     } else {
-      // Para os demais filtros, usar inner join
+      // Para os demais filtros, buscar alunos e fazer join com matricula_old
       query = supabase
         .from("alunos_old")
         .select(`
           *,
-          matricula_old!inner(*)
+          matricula_old!inner(matriculaSituacao, matriculaExcluida)
         `, { count: 'exact' })
-        .eq("alunoExcluido", false);
+        .eq("alunoExcluido", false)
+        .eq("matricula_old.matriculaExcluida", false);
 
       // Aplicar filtro de situação da matrícula se fornecido
       if (matriculaSituacao && matriculaSituacao !== 'todos') {
         const situacaoMap = {
           'ativos': 'ATIVA',
           'bloqueados': 'BLOQUEADA',
-          'encerrados': 'ENCERRADA'
+          'encerrados': 'ENCERRADA',
+          'pendentes': 'PENDENTE'
         };
-        query = query.eq('matricula_old.matriculaSituacao', situacaoMap[matriculaSituacao as keyof typeof situacaoMap]);
+        const situacaoValue = situacaoMap[matriculaSituacao as keyof typeof situacaoMap];
+        if (situacaoValue) {
+          query = query.eq('matricula_old.matriculaSituacao', situacaoValue);
+        }
       }
     }
 

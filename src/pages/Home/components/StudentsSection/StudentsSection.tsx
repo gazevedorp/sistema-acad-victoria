@@ -111,6 +111,7 @@ const StudentsSection: React.FC<StudentsSectionProps> = () => {
         responsavelNome: selectedClientState.alunoResponsavel || undefined,
         responsavelCpf: selectedClientState.alunoResponsavelCPF || undefined,
         responsavelTelefone: selectedClientState.alunoTelefoneResponsavel || undefined,
+        observacoes: selectedClientState.alunoObs || undefined,
       };
     }
     return undefined;
@@ -165,11 +166,11 @@ const StudentsSection: React.FC<StudentsSectionProps> = () => {
         >
           Encerrados
         </Styles.FilterCard>
-        <Styles.FilterCard 
-          active={activeFilter === 'antigos'} 
+        <Styles.FilterCard
+          active={activeFilter === 'antigos'}
           onClick={() => handleFilterChange('antigos')}
         >
-          Antigos
+          Não Matriculados
         </Styles.FilterCard>
       </Styles.FilterContainer>
       

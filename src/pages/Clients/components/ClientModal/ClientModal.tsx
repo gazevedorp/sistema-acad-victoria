@@ -58,6 +58,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
       responsavelNome: undefined,
       responsavelCpf: undefined,
       responsavelTelefone: undefined,
+      observacoes: undefined,
       ...(initialData || {}),
     }),
     [initialData]
@@ -97,9 +98,10 @@ const ClientModal: React.FC<ClientModalProps> = ({
               responsavelNome: undefined,
               responsavelCpf: undefined,
               responsavelTelefone: undefined,
+              observacoes: undefined,
             }
-          : { 
-              ...defaultFormValues, 
+          : {
+              ...defaultFormValues,
               ...initialData,
               data_nascimento: initialData?.data_nascimento ? convertDateForInput(initialData.data_nascimento) : ""
             };
@@ -148,41 +150,125 @@ const ClientModal: React.FC<ClientModalProps> = ({
 
   const handleCpfChange = createMaskedInputHandler("cpf", "cpfCnpj", 14);
   const handleTelefoneChange = createMaskedInputHandler("telefone", "phone", 15);
-  const handleCepChange = createMaskedInputHandler("cep", "cep", 9);
   const handleResponsavelCpfChange = createMaskedInputHandler("responsavelCpf", "cpfCnpj", 14);
   const handleResponsavelTelefoneChange = createMaskedInputHandler("responsavelTelefone", "phone", 15);
+
+  const handleCepChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value.replace(/\D/g, "");
+      let maskedValue = mask.applyMask(rawValue, "cep");
+      if (maskedValue.length > 9) {
+        maskedValue = maskedValue.substring(0, 9);
+      }
+      setValue("cep", maskedValue as any, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+
+      // Buscar CEP na API ViaCEP quando tiver 8 dígitos
+      if (rawValue.length === 8) {
+        try {
+          const response = await fetch(`https://viacep.com.br/ws/${rawValue}/json/`);
+          const data = await response.json();
+
+          if (!data.erro) {
+            // Preencher automaticamente os campos de endereço
+            if (data.logradouro) setValue("rua", data.logradouro, { shouldValidate: true });
+            if (data.bairro) setValue("bairro", data.bairro, { shouldValidate: true });
+            if (data.localidade) setValue("cidade", data.localidade, { shouldValidate: true });
+            if (data.uf) setValue("estado", data.uf.toUpperCase(), { shouldValidate: true });
+          }
+        } catch (error) {
+          console.error("Erro ao buscar CEP:", error);
+        }
+      }
+    },
+    [mask, setValue]
+  );
 
   const onSubmit: SubmitHandler<DadosCadastraisFormData> = async (data) => {
     if (isViewMode) return;
 
     setIsSubmitting(true);
-    const cleanedDataSubmit: Partial<DadosCadastraisFormData> = {
-      nome: data.nome,
-      cpf: String(data.cpf).replace(/\D/g, ""),
-      telefone: String(data.telefone).replace(/\D/g, ""),
-      data_nascimento: data.data_nascimento,
-      sexo: data.sexo,
-      cep: String(data.cep).replace(/\D/g, ""),
-      rua: data.rua,
-      bairro: data.bairro,
-      cidade: data.cidade,
-      estado: data.estado,
+    const cleanedDataSubmit: any = {
+      alunoNome: data.nome,
+      alunoCPF: data.cpf ? String(data.cpf).replace(/\D/g, "") : null,
+      alunoIdentidade: data.rg || null,
+      alunoCelular: data.telefone ? String(data.telefone).replace(/\D/g, "") : null,
+      alunoEmail: data.email || null,
+      alunoSexo: data.sexo === "F" ? 1 : data.sexo === "M" ? 0 : null,
+      alunoDataNascimento: data.data_nascimento || null,
+      alunoCEP: data.cep ? String(data.cep).replace(/\D/g, "") : null,
+      alunoEndereco: data.rua || null,
+      alunoBairro: data.bairro || null,
+      alunoCidade: data.cidade || null,
+      alunoEstado: data.estado || null,
     };
 
-    if (data.rg) cleanedDataSubmit.rg = data.rg;
-    if (data.email) cleanedDataSubmit.email = data.email;
-
-    cleanedDataSubmit.possuiResponsavel = data.possuiResponsavel;
-
     if (data.possuiResponsavel) {
-      cleanedDataSubmit.responsavelNome = data.responsavelNome;
-      if (data.responsavelCpf)
-        cleanedDataSubmit.responsavelCpf = String(data.responsavelCpf).replace(/\D/g, "");
-      if (data.responsavelTelefone)
-        cleanedDataSubmit.responsavelTelefone = String(data.responsavelTelefone).replace(/\D/g, "");
+      cleanedDataSubmit.alunoResponsavel = data.responsavelNome || null;
+      cleanedDataSubmit.alunoResponsavelCPF = data.responsavelCpf ? String(data.responsavelCpf).replace(/\D/g, "") : null;
+      cleanedDataSubmit.alunoTelefoneResponsavel = data.responsavelTelefone ? String(data.responsavelTelefone).replace(/\D/g, "") : null;
+    } else {
+      cleanedDataSubmit.alunoResponsavel = null;
+      cleanedDataSubmit.alunoResponsavelCPF = null;
+      cleanedDataSubmit.alunoTelefoneResponsavel = null;
     }
 
+    cleanedDataSubmit.alunoObs = data.observacoes || null;
+
     try {
+      // Verificar duplicatas de CPF ou RG antes de salvar
+      if (cleanedDataSubmit.alunoCPF || cleanedDataSubmit.alunoIdentidade) {
+        let duplicateQuery = supabase
+          .from("alunos_old")
+          .select("alunoID, alunoNome, alunoCPF, alunoIdentidade");
+
+        // Construir a query de duplicatas
+        const orConditions: string[] = [];
+        if (cleanedDataSubmit.alunoCPF) {
+          orConditions.push(`alunoCPF.eq.${cleanedDataSubmit.alunoCPF}`);
+        }
+        if (cleanedDataSubmit.alunoIdentidade) {
+          orConditions.push(`alunoIdentidade.eq.${cleanedDataSubmit.alunoIdentidade}`);
+        }
+
+        if (orConditions.length > 0) {
+          duplicateQuery = duplicateQuery.or(orConditions.join(','));
+        }
+
+        // Se estiver editando, excluir o próprio aluno da verificação
+        if (mode === ModalMode.EDIT && alunoIdToEdit) {
+          duplicateQuery = duplicateQuery.neq("alunoID", alunoIdToEdit);
+        }
+
+        const { data: duplicates, error: duplicateError } = await duplicateQuery;
+
+        if (duplicateError) {
+          console.error("Erro ao verificar duplicatas:", duplicateError);
+          onSaveComplete?.(new Error("Erro ao verificar duplicatas"), null, mode);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (duplicates && duplicates.length > 0) {
+          const duplicate = duplicates[0];
+          let errorMsg = `Já existe um aluno cadastrado com `;
+
+          if (cleanedDataSubmit.alunoCPF && duplicate.alunoCPF === cleanedDataSubmit.alunoCPF) {
+            errorMsg += `o CPF ${data.cpf}`;
+          } else if (cleanedDataSubmit.alunoIdentidade && duplicate.alunoIdentidade === cleanedDataSubmit.alunoIdentidade) {
+            errorMsg += `o RG ${cleanedDataSubmit.alunoIdentidade}`;
+          }
+
+          errorMsg += `: ${duplicate.alunoNome}`;
+
+          onSaveComplete?.(new Error(errorMsg), null, mode);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       let result;
       if (mode === ModalMode.CREATE) {
         result = await supabase
@@ -193,7 +279,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
         result = await supabase
           .from("alunos_old")
           .update(cleanedDataSubmit)
-          .eq("id", alunoIdToEdit)
+          .eq("alunoID", alunoIdToEdit)
           .select();
       }
 
@@ -229,7 +315,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
         )}
       </Styles.FormGroup>
 
-      <Styles.FormRow>
+      <Styles.FormRow3>
         <Styles.FormGroup>
           <Styles.Label htmlFor="cpf">CPF</Styles.Label>
           <Styles.Input
@@ -255,9 +341,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
             <Styles.ErrorMsg>{errors.rg.message}</Styles.ErrorMsg>
           )}
         </Styles.FormGroup>
-      </Styles.FormRow>
-
-      <Styles.FormRow>
         <Styles.FormGroup>
           <Styles.Label htmlFor="data_nascimento">Data de Nascimento</Styles.Label>
           <Styles.Input
@@ -270,6 +353,9 @@ const ClientModal: React.FC<ClientModalProps> = ({
             <Styles.ErrorMsg>{errors.data_nascimento.message}</Styles.ErrorMsg>
           )}
         </Styles.FormGroup>
+      </Styles.FormRow3>
+
+      <Styles.FormRow3>
         <Styles.FormGroup>
           <Styles.Label htmlFor="sexo">Sexo</Styles.Label>
           <Styles.Select
@@ -285,9 +371,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
             <Styles.ErrorMsg>{errors.sexo.message}</Styles.ErrorMsg>
           )}
         </Styles.FormGroup>
-      </Styles.FormRow>
-
-      <Styles.FormRow>
         <Styles.FormGroup>
           <Styles.Label htmlFor="telefone">Telefone</Styles.Label>
           <Styles.Input
@@ -314,22 +397,48 @@ const ClientModal: React.FC<ClientModalProps> = ({
             <Styles.ErrorMsg>{errors.email.message}</Styles.ErrorMsg>
           )}
         </Styles.FormGroup>
-      </Styles.FormRow>
+      </Styles.FormRow3>
 
-      <Styles.FormGroup>
-        <Styles.Label htmlFor="cep">CEP</Styles.Label>
-        <Styles.Input
-          id="cep"
-          value={watchedCep || ""}
-          onChange={handleCepChange}
-          maxLength={9}
-          placeholder="00000-000"
-          disabled={isViewMode}
-        />
-        {errors.cep && (
-          <Styles.ErrorMsg>{errors.cep.message}</Styles.ErrorMsg>
-        )}
-      </Styles.FormGroup>
+      <Styles.FormRow3>
+        <Styles.FormGroup>
+          <Styles.Label htmlFor="cep">CEP</Styles.Label>
+          <Styles.Input
+            id="cep"
+            value={watchedCep || ""}
+            onChange={handleCepChange}
+            maxLength={9}
+            placeholder="00000-000"
+            disabled={isViewMode}
+          />
+          {errors.cep && (
+            <Styles.ErrorMsg>{errors.cep.message}</Styles.ErrorMsg>
+          )}
+        </Styles.FormGroup>
+        <Styles.FormGroup>
+          <Styles.Label htmlFor="cidade">Cidade</Styles.Label>
+          <Styles.Input
+            id="cidade"
+            {...register("cidade")}
+            disabled={isViewMode}
+          />
+          {errors.cidade && (
+            <Styles.ErrorMsg>{errors.cidade.message}</Styles.ErrorMsg>
+          )}
+        </Styles.FormGroup>
+        <Styles.FormGroup>
+          <Styles.Label htmlFor="estado">Estado (UF)</Styles.Label>
+          <Styles.Input
+            id="estado"
+            {...register("estado")}
+            maxLength={2}
+            placeholder="SP"
+            disabled={isViewMode}
+          />
+          {errors.estado && (
+            <Styles.ErrorMsg>{errors.estado.message}</Styles.ErrorMsg>
+          )}
+        </Styles.FormGroup>
+      </Styles.FormRow3>
 
       <Styles.FormRow>
         <Styles.FormGroup>
@@ -356,33 +465,6 @@ const ClientModal: React.FC<ClientModalProps> = ({
         </Styles.FormGroup>
       </Styles.FormRow>
 
-      <Styles.FormRow>
-        <Styles.FormGroup>
-          <Styles.Label htmlFor="cidade">Cidade</Styles.Label>
-          <Styles.Input
-            id="cidade"
-            {...register("cidade")}
-            disabled={isViewMode}
-          />
-          {errors.cidade && (
-            <Styles.ErrorMsg>{errors.cidade.message}</Styles.ErrorMsg>
-          )}
-        </Styles.FormGroup>
-        <Styles.FormGroup>
-          <Styles.Label htmlFor="estado">Estado (UF)</Styles.Label>
-          <Styles.Input
-            id="estado"
-            {...register("estado")}
-            maxLength={2}
-            placeholder="SP"
-            disabled={isViewMode}
-          />
-          {errors.estado && (
-            <Styles.ErrorMsg>{errors.estado.message}</Styles.ErrorMsg>
-          )}
-        </Styles.FormGroup>
-      </Styles.FormRow>
-
       <Styles.FormGroup>
         <Styles.CheckboxContainer>
           <Styles.Checkbox
@@ -398,7 +480,7 @@ const ClientModal: React.FC<ClientModalProps> = ({
       </Styles.FormGroup>
 
       {watchedPossuiResponsavel && (
-        <>
+        <Styles.FormRow3>
           <Styles.FormGroup>
             <Styles.Label htmlFor="responsavelNome">Nome do Responsável</Styles.Label>
             <Styles.Input
@@ -410,39 +492,50 @@ const ClientModal: React.FC<ClientModalProps> = ({
               <Styles.ErrorMsg>{errors.responsavelNome.message}</Styles.ErrorMsg>
             )}
           </Styles.FormGroup>
-
-          <Styles.FormRow>
-            <Styles.FormGroup>
-              <Styles.Label htmlFor="responsavelCpf">CPF do Responsável</Styles.Label>
-              <Styles.Input
-                id="responsavelCpf"
-                value={watchedResponsavelCpf || ""}
-                onChange={handleResponsavelCpfChange}
-                maxLength={14}
-                placeholder="000.000.000-00"
-                disabled={isViewMode}
-              />
-              {errors.responsavelCpf && (
-                <Styles.ErrorMsg>{errors.responsavelCpf.message}</Styles.ErrorMsg>
-              )}
-            </Styles.FormGroup>
-            <Styles.FormGroup>
-              <Styles.Label htmlFor="responsavelTelefone">Telefone do Responsável</Styles.Label>
-              <Styles.Input
-                id="responsavelTelefone"
-                value={watchedResponsavelTelefone || ""}
-                onChange={handleResponsavelTelefoneChange}
-                maxLength={15}
-                placeholder="(00) 00000-0000"
-                disabled={isViewMode}
-              />
-              {errors.responsavelTelefone && (
-                <Styles.ErrorMsg>{errors.responsavelTelefone.message}</Styles.ErrorMsg>
-              )}
-            </Styles.FormGroup>
-          </Styles.FormRow>
-        </>
+          <Styles.FormGroup>
+            <Styles.Label htmlFor="responsavelCpf">CPF do Responsável</Styles.Label>
+            <Styles.Input
+              id="responsavelCpf"
+              value={watchedResponsavelCpf || ""}
+              onChange={handleResponsavelCpfChange}
+              maxLength={14}
+              placeholder="000.000.000-00"
+              disabled={isViewMode}
+            />
+            {errors.responsavelCpf && (
+              <Styles.ErrorMsg>{errors.responsavelCpf.message}</Styles.ErrorMsg>
+            )}
+          </Styles.FormGroup>
+          <Styles.FormGroup>
+            <Styles.Label htmlFor="responsavelTelefone">Telefone do Responsável</Styles.Label>
+            <Styles.Input
+              id="responsavelTelefone"
+              value={watchedResponsavelTelefone || ""}
+              onChange={handleResponsavelTelefoneChange}
+              maxLength={15}
+              placeholder="(00) 00000-0000"
+              disabled={isViewMode}
+            />
+            {errors.responsavelTelefone && (
+              <Styles.ErrorMsg>{errors.responsavelTelefone.message}</Styles.ErrorMsg>
+            )}
+          </Styles.FormGroup>
+        </Styles.FormRow3>
       )}
+
+      <Styles.FormGroup>
+        <Styles.Label htmlFor="observacoes">Observações</Styles.Label>
+        <Styles.TextArea
+          id="observacoes"
+          {...register("observacoes")}
+          rows={4}
+          disabled={isViewMode}
+          placeholder="Observações gerais sobre o aluno..."
+        />
+        {errors.observacoes && (
+          <Styles.ErrorMsg>{errors.observacoes.message}</Styles.ErrorMsg>
+        )}
+      </Styles.FormGroup>
     </>
   );
 
@@ -454,18 +547,11 @@ const ClientModal: React.FC<ClientModalProps> = ({
         <Styles.ModalHeader>
           <Styles.ModalTitle>
             {mode === ModalMode.CREATE && "Novo Aluno"}
-            {mode === ModalMode.VIEW && "Detalhes do Aluno"}
-            {mode === ModalMode.EDIT && "Editar Aluno"}
+            {mode === ModalMode.VIEW && `Detalhes do Aluno${alunoNome ? ` - ${alunoNome}` : ''}`}
+            {mode === ModalMode.EDIT && `Editar Aluno${alunoNome ? ` - ${alunoNome}` : ''}`}
           </Styles.ModalTitle>
           <Styles.CloseButton onClick={onClose}>×</Styles.CloseButton>
         </Styles.ModalHeader>
-
-        {/* Nome do aluno sempre visível para edição/visualização */}
-        {(mode === ModalMode.EDIT || mode === ModalMode.VIEW) && alunoNome && (
-          <Styles.StudentNameHeader>
-            <h3>{alunoNome}</h3>
-          </Styles.StudentNameHeader>
-        )}
 
         {/* Tabs - apenas para edição e visualização */}
         {(mode === ModalMode.EDIT || mode === ModalMode.VIEW) && (
@@ -503,47 +589,9 @@ const ClientModal: React.FC<ClientModalProps> = ({
 
         <Styles.ModalBody>
           {mode === ModalMode.CREATE ? (
-            // Modo criar: formulário simples
+            // Modo criar: formulário completo
             <Styles.Form onSubmit={handleSubmit(onSubmit)}>
-              <Styles.FormGroup>
-                <Styles.Label htmlFor="nome">Nome Completo</Styles.Label>
-                <Styles.Input
-                  id="nome"
-                  {...register("nome")}
-                />
-                {errors.nome && (
-                  <Styles.ErrorMsg>{errors.nome.message}</Styles.ErrorMsg>
-                )}
-              </Styles.FormGroup>
-
-              <Styles.FormRow>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="cpf">CPF</Styles.Label>
-                  <Styles.Input
-                    id="cpf"
-                    value={watchedCpf || ""}
-                    onChange={handleCpfChange}
-                    maxLength={14}
-                    placeholder="000.000.000-00"
-                  />
-                  {errors.cpf && (
-                    <Styles.ErrorMsg>{errors.cpf.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-                <Styles.FormGroup>
-                  <Styles.Label htmlFor="telefone">Telefone</Styles.Label>
-                  <Styles.Input
-                    id="telefone"
-                    value={watchedTelefone || ""}
-                    onChange={handleTelefoneChange}
-                    maxLength={15}
-                    placeholder="(00) 00000-0000"
-                  />
-                  {errors.telefone && (
-                    <Styles.ErrorMsg>{errors.telefone.message}</Styles.ErrorMsg>
-                  )}
-                </Styles.FormGroup>
-              </Styles.FormRow>
+              {renderFormFields()}
 
               <Styles.SubmitButtonContainer>
                 <Styles.SubmitButton type="submit" disabled={isSubmitting}>

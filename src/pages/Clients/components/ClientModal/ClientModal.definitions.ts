@@ -45,6 +45,7 @@ export interface DadosCadastraisFormData {
   responsavelNome?: string;
   responsavelCpf?: string;
   responsavelTelefone?: string;
+  observacoes?: string;
 }
 
 export interface Aluno extends DadosCadastraisFormData {
@@ -64,7 +65,7 @@ export interface MatriculaFormData {
   matriculaItens: MatriculaItem[];
   dataMatricula: string;
   diaVencimento?: number;
-  statusMatricula: 'ativa' | 'inativa';
+  matriculaSituacao?: string; // Status real do banco: ATIVA, PENDENTE, BLOQUEADA, ENCERRADA, INATIVA
   observacoesMatricula?: string;
   valorPlano?: string;
   valorCobrado?: string;
@@ -106,21 +107,22 @@ const normalizeDate = (value: any, originalValue: any): string | undefined => {
 
 export const dadosCadastraisSchema = yup.object().shape({
   nome: yup.string().required("Nome é obrigatório").min(3, "Nome muito curto"),
-  cpf: yup.string().required("CPF é obrigatório").transform(value => String(value).replace(/[^\d]/g, '')).test('cpf-valido', 'CPF inválido', value => isValidCPF(value)),
+  cpf: yup.string().optional().nullable().default(undefined).transform(value => value ? String(value).replace(/[^\d]/g, '') : null).test('cpf-valido', 'CPF inválido', value => !value || isValidCPF(value)),
   rg: yup.string().optional().nullable().default(undefined),
-  data_nascimento: yup.string().required("Data de Nascimento é obrigatória").transform(normalizeDate).matches(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
-  sexo: yup.string().required("Sexo é obrigatório").oneOf(['M', 'F'], "Selecione M ou F"),
-  telefone: yup.string().required("Telefone é obrigatório").transform(value => String(value).replace(/[^\d]/g, '')).matches(/^\d{10,11}$/, "Telefone inválido"),
+  data_nascimento: yup.string().optional().nullable().default(undefined).transform(normalizeDate).test('data-valida', 'Data inválida', value => !value || /^\d{4}-\d{2}-\d{2}$/.test(value)),
+  sexo: yup.string().optional().nullable().default(undefined).test('sexo-valido', 'Selecione M ou F', value => !value || ['M', 'F'].includes(value)),
+  telefone: yup.string().optional().nullable().default(undefined).transform(value => value ? String(value).replace(/[^\d]/g, '') : null).test('tel-valido', 'Telefone inválido', value => !value || /^\d{10,11}$/.test(value)),
   email: yup.string().email("E-mail inválido").optional().nullable().default(undefined),
-  cep: yup.string().required("CEP é obrigatório").transform(value => String(value).replace(/[^\d]/g, '')).matches(/^\d{8}$/, "CEP deve ter 8 dígitos"),
-  rua: yup.string().required("Rua é obrigatória").min(2, "Rua muito curta"),
-  bairro: yup.string().required("Bairro é obrigatório").min(2, "Bairro muito curto"),
-  cidade: yup.string().required("Cidade é obrigatória").min(2, "Cidade muito curta"),
-  estado: yup.string().required("Estado (UF) é obrigatório").length(2, "UF inválida").matches(/^[A-Za-z]{2}$/, "UF inválida"),
+  cep: yup.string().optional().nullable().default(undefined).transform(value => value ? String(value).replace(/[^\d]/g, '') : null).test('cep-valido', 'CEP deve ter 8 dígitos', value => !value || /^\d{8}$/.test(value)),
+  rua: yup.string().optional().nullable().default(undefined),
+  bairro: yup.string().optional().nullable().default(undefined),
+  cidade: yup.string().optional().nullable().default(undefined),
+  estado: yup.string().optional().nullable().default(undefined).test('uf-valida', 'UF inválida', value => !value || /^[A-Za-z]{2}$/.test(value)),
   possuiResponsavel: yup.boolean().optional().nullable(),
   responsavelNome: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.required("Nome do Responsável é obrigatório").min(3), otherwise: schema => schema.optional().nullable().default(undefined)}),
   responsavelCpf: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.optional().nullable().default(undefined).transform(v => v ? String(v).replace(/[^\d]/g, '') : null).test('cpf-valido-resp', 'CPF do Resp. inválido', v => !v || isValidCPF(v)) , otherwise: schema => schema.optional().nullable().default(undefined)}),
   responsavelTelefone: yup.string().when('possuiResponsavel', {is: true, then: schema => schema.optional().nullable().default(undefined).transform(v => v ? String(v).replace(/[^\d]/g, '') : null).test('tel-valido-resp', 'Telefone do Resp. inválido', v => !v || /^\d{10,11}$/.test(v)) , otherwise: schema => schema.optional().nullable().default(undefined)}),
+  observacoes: yup.string().optional().nullable().default(undefined),
 });
 
 export const matriculaSchema = yup.object().shape({
@@ -132,7 +134,7 @@ export const matriculaSchema = yup.object().shape({
     })).min(1, "Configure um plano para a matrícula").required(),
     dataMatricula: yup.string().required("Data da matrícula é obrigatória").transform(normalizeDate).matches(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
     diaVencimento: yup.number().required("Dia de vencimento é obrigatório").min(1).max(31).typeError("Dia inválido"),
-    statusMatricula: yup.string().oneOf(['ativa', 'inativa'], "Status inválido").required("Status é obrigatório"),
+    matriculaSituacao: yup.string().oneOf(['ATIVA', 'PENDENTE', 'BLOQUEADA', 'ENCERRADA'], "Status inválido").required("Status é obrigatório"),
     observacoesMatricula: yup.string().optional().nullable().default(undefined),
 });
 
