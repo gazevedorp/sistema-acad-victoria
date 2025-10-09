@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type FilterType = 'todos' | 'ativos' | 'bloqueados' | 'encerrados' | 'antigos';
+type FilterType = 'todos' | 'ativos' | 'bloqueados' | 'encerrados' | 'pendentes' | 'antigos';
 
 interface StudentsState {
   totalStudents: number;
@@ -36,6 +36,8 @@ export const useStudentsStore = create<StudentsState>((set, get) => ({
         return 'Alunos Bloqueados';
       case 'encerrados':
         return 'Alunos Encerrados';
+      case 'pendentes':
+        return 'Alunos Pendentes';
       case 'antigos':
         return 'Alunos Não Matriculados';
       default:

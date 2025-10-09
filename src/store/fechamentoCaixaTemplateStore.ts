@@ -45,7 +45,7 @@ const templatePadrao: FechamentoCaixaTemplate = {
   informacoes: {
     // Cabeçalho
     titulo: 'Relatório de Fechamento de Caixa',
-    subtitulo: 'Sistema Acadêmico Victoria',
+    subtitulo: 'Sistema Academia Victória',
     mostrarData: true,
     mostrarUsuario: true,
     

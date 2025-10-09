@@ -5,6 +5,7 @@ import {
   FiHome,
   FiLogOut,
   FiFile,
+  FiPackage,
 } from "react-icons/fi";
 import { useAuthStore } from "../../store/authStore";
 
@@ -42,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ minimized, onToggle }) => {
     // { icon: <FiBox />, text: "Caixa [F3]", route: "/caixa" },
     // { icon: <FiTable />, text: "Turmas [F4]", route: "/turmas" },
     { icon: <FiFile />, text: "Planos [F5]", route: "/planos" },
-    // { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
+    { icon: <FiPackage />, text: "Produtos [F6]", route: "/products" },
     // { icon: <FiList />, text: "Modalidades [F7]", route: "/modalidades" },
     // { icon: <FiUser />, text: "Usuários [F8]", route: "/users" },
     // { icon: <FiBarChart2 />, text: "Relatórios [F9]", route: "/relatorios" },

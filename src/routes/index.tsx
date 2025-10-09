@@ -4,7 +4,7 @@ import Dashboard from "../layouts/Dashboard";
 import Home from "../pages/Home/Home";
 import { useAuthStore } from "../store/authStore";
 import Login from "../pages/Login/Login";
-// import Products from "../pages/Products/Products";
+import Products from "../pages/Products/Products";
 // import Caixa from "../pages/Caixa/Caixa";
 // import FormasPagamento from "../pages/FormasPagamento/FormasPagamento";
 // import Permissoes from "../pages/Permissoes/Permissoes";
@@ -33,8 +33,8 @@ const AppRoutes: React.FC = () => {
           }
         >
           <Route index element={<Home />} />
-          {/* <Route path="products" element={<Products />} />
-          <Route path="turmas" element={<Turmas />} />
+          <Route path="products" element={<Products />} />
+          {/* <Route path="turmas" element={<Turmas />} />
           <Route path="relatorios" element={<Relatorios />} /> */}
           <Route path="planos" element={<Plans />} />
           {/* <Route path="modalidades" element={<Modalidades />} />

@@ -53,7 +53,7 @@ export const caixaModalSchema = yup.object().shape({
   }),
   cliente_id: yup.string().when("tipo", {
     is: TipoMovimentacaoCaixa.ENTRADA, // Changed from PAGAMENTO_MENSALIDADE
-    then: (schema) => schema.required("Selecione o aluno"),
+    then: (schema) => schema.optional().nullable(), // Tornando opcional para não bloquear
     otherwise: (schema) => schema.optional().nullable(),
   }),
   produto_id: yup.string().when("tipo", {

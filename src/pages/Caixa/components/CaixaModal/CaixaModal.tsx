@@ -125,6 +125,7 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
 
 
   const onSubmit: SubmitHandler<CaixaModalFormData> = async (data) => {
+    console.log("CaixaModal - onSubmit chamado com data:", data);
     setIsSubmitting(true);
     const dataToSave: Partial<CaixaModalFormData> = {
       tipo: data.tipo,
@@ -140,8 +141,11 @@ const CaixaModal: React.FC<CaixaModalProps> = ({
       // dataToSave.quantidade = data.quantidade; // Opcional salvar quantidade, se sua tabela 'financeiro' tiver
     }
 
+    console.log("CaixaModal - dataToSave:", dataToSave);
+
     try {
       await onSave(dataToSave);
+      console.log("CaixaModal - onSave completado com sucesso");
     } catch (error) {
       console.error("Erro ao salvar movimentação de caixa:", error);
     } finally {

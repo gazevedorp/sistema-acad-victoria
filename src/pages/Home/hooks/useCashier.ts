@@ -90,17 +90,22 @@ export const useCashier = (
     cliente_id?: string;
     produto_id?: string;
   }) => {
+    console.log("useCashier - handleSaveMovimentacao chamado com data:", data);
     if (!activeCaixaDetails || !currentUser) {
+      console.error("useCashier - caixa não ativo ou usuário não autenticado");
       toast.error("Caixa não ativo ou usuário não autenticado.");
       return;
     }
 
+    console.log("useCashier - caixaId:", activeCaixaDetails.id);
     setIsSubmittingCaixaAction(true);
     try {
       await saveMovimentacao(activeCaixaDetails.id, data);
+      console.log("useCashier - saveMovimentacao completado com sucesso");
       toast.success("Movimentação salva com sucesso!");
       onRequestSummaryRefresh();
     } catch (error: any) {
+      console.error("useCashier - erro ao salvar movimentação:", error);
       toast.error("Erro ao salvar movimentação: " + error.message);
     } finally {
       setIsSubmittingCaixaAction(false);

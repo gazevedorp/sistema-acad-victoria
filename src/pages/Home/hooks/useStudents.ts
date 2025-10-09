@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { fetchStudents, AlunoOld } from "../services/homeServices";
 import { useStudentsStore } from "../../../store/studentsStore";
 
-type FilterType = 'todos' | 'ativos' | 'bloqueados' | 'encerrados' | 'antigos';
+type FilterType = 'todos' | 'ativos' | 'bloqueados' | 'encerrados' | 'pendentes' | 'antigos';
 
 export const useStudents = () => {
   const [students, setStudents] = useState<AlunoOld[]>([]);

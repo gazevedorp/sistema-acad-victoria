@@ -1,6 +1,6 @@
 # Página Home - Estrutura Unificada
 
-Esta é a estrutura completamente otimizada e unificada da página Home do sistema acadêmico.
+Esta é a estrutura completamente otimizada e unificada da página Home do sistema de academia.
 
 ## 🏗️ Estrutura de arquivos
 

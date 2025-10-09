@@ -155,6 +155,12 @@ const StudentsSection: React.FC<StudentsSectionProps> = () => {
           Ativos
         </Styles.FilterCard>
         <Styles.FilterCard 
+          active={activeFilter === 'pendentes'} 
+          onClick={() => handleFilterChange('pendentes')}
+        >
+          Pendentes
+        </Styles.FilterCard>
+        <Styles.FilterCard 
           active={activeFilter === 'bloqueados'} 
           onClick={() => handleFilterChange('bloqueados')}
         >

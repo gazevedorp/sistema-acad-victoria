@@ -142,7 +142,7 @@ export const fetchHomePageSummaryData = async (
     if (financeiroRes.data && caixaId) {
       const movs = financeiroRes.data as MovimentacaoCaixaAtivoSummary[];
       movs.forEach((m) => {
-        if (m.tipo === "pagamento" || m.tipo === "venda") {
+        if (m.tipo === "pagamento" || m.tipo === "venda" || m.tipo === "entrada") {
           totalEntradasCaixaAberto += m.valor;
         } else if (m.tipo === "saida") {
           totalSaidasCaixaAberto += m.valor;
@@ -168,6 +168,7 @@ export const fetchStudents = async (
   matriculaSituacao?: string
 ): Promise<StudentsData> => {
   try {
+    console.log("fetchStudents - matriculaSituacao:", matriculaSituacao);
     let query;
     
     if (matriculaSituacao === 'antigos') {
@@ -188,14 +189,11 @@ export const fetchStudents = async (
       }
     } else {
       // Para os demais filtros, buscar alunos e fazer join com matricula_old
-      query = supabase
-        .from("alunos_old")
-        .select(`
-          *,
-          matricula_old!inner(matriculaSituacao, matriculaExcluida)
-        `, { count: 'exact' })
-        .eq("alunoExcluido", false)
-        .eq("matricula_old.matriculaExcluida", false);
+      // Primeiro, buscar IDs de alunos que têm matrícula com a situação desejada
+      let matriculaQuery = supabase
+        .from("matricula_old")
+        .select("alunoID, matriculaSituacao")
+        .eq("matriculaExcluida", false);
 
       // Aplicar filtro de situação da matrícula se fornecido
       if (matriculaSituacao && matriculaSituacao !== 'todos') {
@@ -206,10 +204,39 @@ export const fetchStudents = async (
           'pendentes': 'PENDENTE'
         };
         const situacaoValue = situacaoMap[matriculaSituacao as keyof typeof situacaoMap];
+        console.log("fetchStudents - situacaoValue:", situacaoValue);
         if (situacaoValue) {
-          query = query.eq('matricula_old.matriculaSituacao', situacaoValue);
+          // Usar ilike para busca case-insensitive
+          matriculaQuery = matriculaQuery.ilike('matriculaSituacao', situacaoValue);
         }
       }
+
+      const { data: matriculasData, error: matriculasError } = await matriculaQuery;
+
+      if (matriculasError) {
+        console.error("Erro ao buscar matrículas:", matriculasError);
+        throw new Error("Erro ao buscar matrículas");
+      }
+
+      console.log("fetchStudents - matrículas encontradas:", matriculasData?.length);
+
+      // Extrair IDs únicos de alunos
+      const alunoIdsComMatricula = [...new Set((matriculasData || []).map(m => m.alunoID))];
+
+      if (alunoIdsComMatricula.length === 0) {
+        // Se não houver alunos com a situação desejada, retornar vazio
+        return {
+          students: [],
+          totalStudents: 0
+        };
+      }
+
+      // Buscar dados dos alunos
+      query = supabase
+        .from("alunos_old")
+        .select("*", { count: 'exact' })
+        .eq("alunoExcluido", false)
+        .in('alunoID', alunoIdsComMatricula);
     }
 
     // Aplicar filtro de busca se fornecido
@@ -229,6 +256,8 @@ export const fetchStudents = async (
       console.error("Erro ao buscar alunos:", error);
       throw new Error("Erro ao buscar alunos");
     }
+
+    console.log("fetchStudents - resultado:", { count, dataLength: data?.length });
 
     return {
       students: (data || []) as AlunoOld[],
@@ -349,16 +378,27 @@ export const saveMovimentacao = async (
   }
 ): Promise<void> => {
   try {
-    const { error } = await supabase
+    console.log("saveMovimentacao - caixaId:", caixaId);
+    console.log("saveMovimentacao - movimentacao:", movimentacao);
+    
+    const dataToInsert = {
+      ...movimentacao,
+      caixa_id: caixaId
+    };
+    
+    console.log("saveMovimentacao - dataToInsert:", dataToInsert);
+    
+    const { data, error } = await supabase
       .from("financeiro")
-      .insert([{
-        ...movimentacao,
-        caixa_id: caixaId
-      }]);
+      .insert([dataToInsert])
+      .select();
+
+    console.log("saveMovimentacao - resultado data:", data);
+    console.log("saveMovimentacao - resultado error:", error);
 
     if (error) {
       console.error("Erro ao salvar movimentação:", error);
-      throw new Error("Erro ao salvar movimentação");
+      throw new Error("Erro ao salvar movimentação: " + error.message);
     }
   } catch (error) {
     console.error("Erro inesperado ao salvar movimentação:", error);
@@ -393,7 +433,7 @@ export const fecharCaixa = async (
     let totalSaidas = 0;
 
     (transacoes || []).forEach(t => {
-      if (t.tipo === "pagamento" || t.tipo === "venda") {
+      if (t.tipo === "pagamento" || t.tipo === "venda" || t.tipo === "entrada") {
         totalEntradas += Number(t.valor);
       } else if (t.tipo === "saida") {
         totalSaidas += Number(t.valor);

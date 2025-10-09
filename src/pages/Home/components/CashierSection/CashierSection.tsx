@@ -179,6 +179,7 @@ const CashierSection: React.FC<CashierSectionProps> = ({
           let tipoDesc = "";
           switch (item.tipo) {
             case "pagamento": tipoDesc = "PAGAMENTO"; break;
+            case "entrada": tipoDesc = "ENTRADA"; break;
             case "venda": tipoDesc = "VENDA"; break;
             case "saida": tipoDesc = "SAÍDA"; break;
             default: tipoDesc = item.tipo.toUpperCase();
@@ -311,7 +312,11 @@ const CashierSection: React.FC<CashierSectionProps> = ({
   }, [handleAbrirCaixa]);
 
   const handleSaveMovimentacaoSubmit = useCallback(async (data: Partial<CaixaModalFormData>) => {
-    if (!activeCaixaDetails) return;
+    console.log("CashierSection - handleSaveMovimentacaoSubmit chamado com data:", data);
+    if (!activeCaixaDetails) {
+      console.error("CashierSection - activeCaixaDetails não está definido!");
+      return;
+    }
 
     const payload = {
       tipo: data.tipo || "",
@@ -322,7 +327,9 @@ const CashierSection: React.FC<CashierSectionProps> = ({
       produto_id: data.produto_id || undefined,
     };
 
+    console.log("CashierSection - payload:", payload);
     await handleSaveMovimentacao(payload);
+    console.log("CashierSection - handleSaveMovimentacao completado");
     setIsFinanceModalOpen(false);
   }, [activeCaixaDetails, handleSaveMovimentacao]);
 
